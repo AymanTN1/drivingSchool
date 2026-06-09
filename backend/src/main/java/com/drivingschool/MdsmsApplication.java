@@ -30,6 +30,7 @@ public class MdsmsApplication {
             CaisseTransactionRepository caisseTransactionRepository,
             LearningPostSlotRepository learningPostSlotRepository,
             DrivingLessonSlotRepository drivingLessonSlotRepository,
+            FuelRecordRepository fuelRecordRepository,
             PasswordEncoder passwordEncoder) {
 
         return args -> {
@@ -331,6 +332,48 @@ public class MdsmsApplication {
                     oldLesson.setStatus(BookingStatus.COMPLETED);
                     oldLesson.setComments(i % 3 == 0 ? "Bonne maîtrise de l'embrayage." : "Doit travailler les créneaux.");
                     drivingLessonSlotRepository.save(oldLesson);
+                }
+
+                // 10. Fuel Records - Realistic fuel data for demo dashboards
+                String[] stations = {"Afriquia", "Total", "Shell", "Petromin", "Winxo"};
+                // Car 1 (12345-A-7): Efficient driving, avg ~5.5 L/100km
+                int odoStart1 = 45000;
+                for (int i = 0; i < 12; i++) {
+                    FuelRecord fr = new FuelRecord();
+                    fr.setVehicle(car1);
+                    fr.setMoniteur(instructor1);
+                    fr.setDate(LocalDateTime.now().minusMonths(6).plusDays(i * 15).withHour(8));
+                    int kmDriven = 280 + (i % 3) * 40; // ~280-360 km per fill
+                    odoStart1 += kmDriven;
+                    fr.setOdometerKm(odoStart1);
+                    double liters = (5.2 + (i % 4) * 0.3) * kmDriven / 100; // ~5.2-6.4 L/100km
+                    fr.setLiters(Math.round(liters * 100.0) / 100.0);
+                    fr.setPricePerLiter(13.5 + (i % 3) * 0.2); // ~13.5-13.9 DH/L
+                    fr.setTotalCost(Math.round(fr.getLiters() * fr.getPricePerLiter() * 100.0) / 100.0);
+                    fr.setStation(stations[i % stations.length]);
+                    fr.setNotes(i == 11 ? "Plein avant examen NARSA" : null);
+                    fuelRecordRepository.save(fr);
+                }
+
+                // Car 2 (98765-B-11): Higher consumption, simulates alert! ~7-9 L/100km
+                int odoStart2 = 62000;
+                for (int i = 0; i < 10; i++) {
+                    FuelRecord fr = new FuelRecord();
+                    fr.setVehicle(car2);
+                    fr.setMoniteur(instructor2);
+                    fr.setDate(LocalDateTime.now().minusMonths(5).plusDays(i * 16).withHour(17));
+                    int kmDriven = 200 + (i % 4) * 30;
+                    odoStart2 += kmDriven;
+                    fr.setOdometerKm(odoStart2);
+                    // Simulate increasing consumption (possible problem)
+                    double baseCons = 6.5 + (i * 0.4); // Goes from 6.5 to 10.1 L/100km
+                    double liters = baseCons * kmDriven / 100;
+                    fr.setLiters(Math.round(liters * 100.0) / 100.0);
+                    fr.setPricePerLiter(13.7 + (i % 2) * 0.15);
+                    fr.setTotalCost(Math.round(fr.getLiters() * fr.getPricePerLiter() * 100.0) / 100.0);
+                    fr.setStation(stations[(i + 2) % stations.length]);
+                    fr.setNotes(i >= 8 ? "Consommation anormalement élevée !" : null);
+                    fuelRecordRepository.save(fr);
                 }
             }
         };

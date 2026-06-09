@@ -4,7 +4,8 @@ import {
 } from 'recharts';
 import { 
   UserPlus, Car, DollarSign, Calendar, AlertCircle, FileText, CheckCircle2, Star, 
-  TrendingUp, Users, Shield, LogOut, CheckSquare, PlusCircle, Printer, X, ShieldAlert 
+  TrendingUp, Users, Shield, LogOut, CheckSquare, PlusCircle, Printer, X, ShieldAlert,
+  Fuel, Gauge, AlertTriangle, Activity
 } from 'lucide-react';
 
 export default function Dashboard({ authData, onLogout }) {
@@ -24,6 +25,7 @@ export default function Dashboard({ authData, onLogout }) {
   const [analytics, setAnalytics] = useState(null);
   const [candidateData, setCandidateData] = useState(null);
   const [moniteurLessons, setMoniteurLessons] = useState([]);
+  const [fleetAnalytics, setFleetAnalytics] = useState(null);
 
   // Modal print view
   const [contractToPrint, setContractToPrint] = useState(null);
@@ -70,6 +72,11 @@ export default function Dashboard({ authData, onLogout }) {
         .then(data => setAnalytics(data))
         .catch(err => console.log('Error fetching analytics', err))
         .finally(() => setLoading(false));
+
+      fetch('http://localhost:8080/api/fleet/analytics', { headers })
+        .then(res => res.json())
+        .then(data => setFleetAnalytics(data))
+        .catch(err => console.log('Error fetching fleet analytics', err));
     } else if (role === 'ASSISTANT') {
       // Fetch candidates list
       fetch('http://localhost:8080/api/assistant/candidates', { headers })
@@ -371,6 +378,12 @@ export default function Dashboard({ authData, onLogout }) {
               >
                 <Car size={16} /> Gérer Véhicules
               </button>
+              <button 
+                onClick={() => setActiveTab('fleet-fuel')} 
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'fleet-fuel' ? 'white' : 'var(--text-muted)', background: activeTab === 'fleet-fuel' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
+              >
+                <Fuel size={16} /> Carburant & Rentabilité
+              </button>
             </>
           )}
 
@@ -593,6 +606,208 @@ export default function Dashboard({ authData, onLogout }) {
               </div>
 
             </div>
+          </div>
+        )}
+
+        {/* 1b. ADMIN TAB: Fleet Fuel Analytics */}
+        {activeTab === 'fleet-fuel' && (
+          <div>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', marginBottom: '24px', color: 'white', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Fuel size={28} style={{ color: 'var(--accent)' }} /> Gestion Carburant & Rentabilité
+            </h2>
+
+            {/* Global KPI cards */}
+            {fleetAnalytics && (
+              <>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
+                  <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)' }}><Fuel size={24} /></div>
+                    <div>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Coût Total Carburant</span>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>{fleetAnalytics.totalFuelCost} DH</span>
+                    </div>
+                  </div>
+                  <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}><Gauge size={24} /></div>
+                    <div>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Litres Consommés</span>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>{fleetAnalytics.totalLiters} L</span>
+                    </div>
+                  </div>
+                  <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(16,185,129,0.1)', color: 'var(--success)' }}><Car size={24} /></div>
+                    <div>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Véhicules Suivis</span>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>{fleetAnalytics.vehicles.length}</span>
+                    </div>
+                  </div>
+                  <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(212,175,55,0.1)', color: 'var(--accent)' }}><AlertTriangle size={24} /></div>
+                    <div>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Alertes Consommation</span>
+                      <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: fleetAnalytics.vehicles.filter(v => v.consumptionAlert).length > 0 ? 'var(--danger)' : 'var(--success)' }}>
+                        {fleetAnalytics.vehicles.filter(v => v.consumptionAlert).length}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Per-vehicle detailed cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px', marginBottom: '32px' }}>
+                  {fleetAnalytics.vehicles.map(v => (
+                    <div key={v.vehicleId} className="card" style={{ position: 'relative', overflow: 'hidden' }}>
+                      {v.consumptionAlert && (
+                        <div style={{ position: 'absolute', top: '0', right: '0', background: 'var(--danger)', color: 'white', padding: '4px 12px', borderRadius: '0 0 0 12px', fontSize: '0.7rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <AlertTriangle size={12} /> ALERTE CONSOMMATION
+                        </div>
+                      )}
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Car size={18} className="text-accent" /> {v.label}
+                      </h3>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '16px' }}>
+                        <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', textAlign: 'center' }}>
+                          <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Conso. Moyenne</span>
+                          <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: v.avgConsumption > 7 ? 'var(--danger)' : 'var(--success)' }}>
+                            {v.avgConsumption} L/100km
+                          </span>
+                        </div>
+                        <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', textAlign: 'center' }}>
+                          <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Dernier Plein</span>
+                          <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: v.lastConsumption > v.avgConsumption * 1.3 ? 'var(--danger)' : 'white' }}>
+                            {v.lastConsumption} L/100km
+                          </span>
+                        </div>
+                        <div style={{ padding: '12px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', textAlign: 'center' }}>
+                          <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--text-muted)', marginBottom: '4px' }}>Coût/Heure</span>
+                          <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--accent)' }}>
+                            {v.costPerHour} DH
+                          </span>
+                        </div>
+                      </div>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                        <div style={{ textAlign: 'center' }}>
+                          <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Coût Total</span>
+                          <span style={{ fontWeight: 'bold', color: 'white', fontSize: '0.9rem' }}>{v.totalFuelCost} DH</span>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Total Litres</span>
+                          <span style={{ fontWeight: 'bold', color: 'white', fontSize: '0.9rem' }}>{v.totalLiters} L</span>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Km Parcourus</span>
+                          <span style={{ fontWeight: 'bold', color: 'white', fontSize: '0.9rem' }}>{v.totalKmDriven} km</span>
+                        </div>
+                        <div style={{ textAlign: 'center' }}>
+                          <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)' }}>Heures Conduite</span>
+                          <span style={{ fontWeight: 'bold', color: 'white', fontSize: '0.9rem' }}>{v.totalDrivingHours} h</span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Monthly Fuel Cost Trend Chart */}
+                <div className="card" style={{ marginBottom: '32px' }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white', marginBottom: '20px' }}>
+                    Évolution Mensuelle des Dépenses Carburant
+                  </h3>
+                  <div style={{ height: '300px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={fleetAnalytics.monthlyFuelTrends}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                        <XAxis dataKey="name" stroke="var(--text-muted)" />
+                        <YAxis stroke="var(--text-muted)" />
+                        <Tooltip contentStyle={{ background: '#1e293b', border: 'none', borderRadius: '8px', color: 'white' }} />
+                        <Legend />
+                        <Bar dataKey="cout" name="Coût (DH)" fill="#ef4444" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="litres" name="Litres" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                {/* Fuel Record Form */}
+                <div className="card">
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <PlusCircle className="text-accent" /> Enregistrer un Plein de Carburant
+                  </h3>
+                  <form onSubmit={(e) => {
+                    e.preventDefault();
+                    const formData = new FormData(e.target);
+                    const data = Object.fromEntries(formData.entries());
+                    data.vehicleId = parseInt(data.vehicleId);
+                    data.liters = parseFloat(data.liters);
+                    data.pricePerLiter = parseFloat(data.pricePerLiter);
+                    data.totalCost = parseFloat(data.totalCost);
+                    data.odometerKm = parseInt(data.odometerKm);
+
+                    fetch('http://localhost:8080/api/fleet/fuel', {
+                      method: 'POST',
+                      headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                      },
+                      body: JSON.stringify(data)
+                    })
+                      .then(async (res) => {
+                        const resData = await res.json();
+                        if (!res.ok) throw new Error(resData.message || 'Erreur');
+                        triggerFeedback('success', resData.message);
+                        e.target.reset();
+                        refreshData();
+                      })
+                      .catch(err => triggerFeedback('danger', err.message));
+                  }}>
+                    <div className="grid-3">
+                      <div className="form-group">
+                        <label>Véhicule</label>
+                        <select name="vehicleId" className="form-control" required>
+                          <option value="">-- Choisir --</option>
+                          {vehicles.map(v => (
+                            <option key={v.id} value={v.id}>{v.brand} {v.model} ({v.licensePlate})</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label>Litres</label>
+                        <input type="number" step="0.01" name="liters" className="form-control" placeholder="Ex: 35.5" required />
+                      </div>
+                      <div className="form-group">
+                        <label>Prix/Litre (DH)</label>
+                        <input type="number" step="0.01" name="pricePerLiter" className="form-control" placeholder="Ex: 13.50" required />
+                      </div>
+                    </div>
+                    <div className="grid-3">
+                      <div className="form-group">
+                        <label>Coût Total (DH)</label>
+                        <input type="number" step="0.01" name="totalCost" className="form-control" placeholder="Ex: 479.25" required />
+                      </div>
+                      <div className="form-group">
+                        <label>Kilométrage Compteur</label>
+                        <input type="number" name="odometerKm" className="form-control" placeholder="Ex: 48500" required />
+                      </div>
+                      <div className="form-group">
+                        <label>Station</label>
+                        <select name="station" className="form-control">
+                          <option value="Afriquia">Afriquia</option>
+                          <option value="Total">Total</option>
+                          <option value="Shell">Shell</option>
+                          <option value="Petromin">Petromin</option>
+                          <option value="Winxo">Winxo</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label>Notes (optionnel)</label>
+                      <input type="text" name="notes" className="form-control" placeholder="Ex: Plein avant longue route" />
+                    </div>
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }}>
+                      Enregistrer le Plein
+                    </button>
+                  </form>
+                </div>
+              </>
+            )}
           </div>
         )}
 

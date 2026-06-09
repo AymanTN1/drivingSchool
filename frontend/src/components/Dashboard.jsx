@@ -5,7 +5,7 @@ import {
 import { 
   UserPlus, Car, DollarSign, Calendar, AlertCircle, FileText, CheckCircle2, Star, 
   TrendingUp, Users, Shield, LogOut, CheckSquare, PlusCircle, Printer, X, ShieldAlert,
-  Fuel, Gauge, AlertTriangle, Activity
+  Fuel, Gauge, AlertTriangle, Activity, Banknote, Clock, Award
 } from 'lucide-react';
 
 export default function Dashboard({ authData, onLogout }) {
@@ -26,6 +26,8 @@ export default function Dashboard({ authData, onLogout }) {
   const [candidateData, setCandidateData] = useState(null);
   const [moniteurLessons, setMoniteurLessons] = useState([]);
   const [fleetAnalytics, setFleetAnalytics] = useState(null);
+  const [payrollData, setPayrollData] = useState([]);
+  const [paySlips, setPaySlips] = useState([]);
 
   // Modal print view
   const [contractToPrint, setContractToPrint] = useState(null);
@@ -77,6 +79,16 @@ export default function Dashboard({ authData, onLogout }) {
         .then(res => res.json())
         .then(data => setFleetAnalytics(data))
         .catch(err => console.log('Error fetching fleet analytics', err));
+
+      fetch('http://localhost:8080/api/payroll/moniteurs', { headers })
+        .then(res => res.json())
+        .then(data => setPayrollData(data))
+        .catch(err => console.log('Error fetching payroll', err));
+
+      fetch('http://localhost:8080/api/payroll/slips', { headers })
+        .then(res => res.json())
+        .then(data => setPaySlips(data))
+        .catch(err => console.log('Error fetching pay slips', err));
     } else if (role === 'ASSISTANT') {
       // Fetch candidates list
       fetch('http://localhost:8080/api/assistant/candidates', { headers })
@@ -383,6 +395,12 @@ export default function Dashboard({ authData, onLogout }) {
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'fleet-fuel' ? 'white' : 'var(--text-muted)', background: activeTab === 'fleet-fuel' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <Fuel size={16} /> Carburant & Rentabilité
+              </button>
+              <button 
+                onClick={() => setActiveTab('payroll')} 
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'payroll' ? 'white' : 'var(--text-muted)', background: activeTab === 'payroll' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
+              >
+                <Banknote size={16} /> Paie & RH
               </button>
             </>
           )}
@@ -808,6 +826,181 @@ export default function Dashboard({ authData, onLogout }) {
                 </div>
               </>
             )}
+          </div>
+        )}
+
+        {/* 1c. ADMIN TAB: Payroll & HR */}
+        {activeTab === 'payroll' && (
+          <div>
+            <h2 style={{ fontSize: '1.75rem', fontWeight: 'bold', marginBottom: '24px', color: 'white', display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Banknote size={28} style={{ color: 'var(--accent)' }} /> Paie & Ressources Humaines
+            </h2>
+
+            {/* Moniteur Payroll Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '20px', marginBottom: '32px' }}>
+              {payrollData.map(m => (
+                <div key={m.userId} className="card">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                    <div>
+                      <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Users size={18} className="text-accent" /> {m.fullName}
+                      </h3>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{m.phone}</span>
+                    </div>
+                    <span className={`badge ${m.payFrequency === 'WEEKLY' ? 'badge-info' : m.payFrequency === 'BIWEEKLY' ? 'badge-warning' : 'badge-success'}`} style={{ fontSize: '0.65rem' }}>
+                      {m.payFrequency === 'WEEKLY' ? 'Hebdomadaire' : m.payFrequency === 'BIWEEKLY' ? 'Quinzaine' : 'Mensuel'}
+                    </span>
+                  </div>
+
+                  {/* Config summary */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '16px' }}>
+                    <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', textAlign: 'center' }}>
+                      <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Taux/Heure</span>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--accent)' }}>{m.hourlyRate} DH</span>
+                    </div>
+                    <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', textAlign: 'center' }}>
+                      <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Salaire Fixe</span>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white' }}>{m.fixedSalary} DH</span>
+                    </div>
+                    <div style={{ padding: '10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', textAlign: 'center' }}>
+                      <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '2px' }}>Prime/Examen</span>
+                      <span style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--success)' }}>{m.bonusPerExamSuccess} DH</span>
+                    </div>
+                  </div>
+
+                  {/* Current period stats */}
+                  <div style={{ padding: '12px', background: 'rgba(212,175,55,0.05)', border: '1px solid rgba(212,175,55,0.15)', borderRadius: '8px', marginBottom: '16px' }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--accent)', fontWeight: 'bold', marginBottom: '8px' }}>
+                      P\u00e9riode en cours : {m.currentPeriodStart} \u2192 {m.currentPeriodEnd}
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                      <div style={{ textAlign: 'center' }}>
+                        <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)' }}>H. Effectu\u00e9es</span>
+                        <span style={{ fontWeight: 'bold', color: 'white' }}>{m.currentCompletedHours}h</span>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)' }}>H. R\u00e9serv\u00e9es</span>
+                        <span style={{ fontWeight: 'bold', color: '#3b82f6' }}>{m.currentBookedHours}h</span>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)' }}>Examens R\u00e9ussis</span>
+                        <span style={{ fontWeight: 'bold', color: 'var(--success)' }}>{m.examSuccessCount}</span>
+                      </div>
+                      <div style={{ textAlign: 'center' }}>
+                        <span style={{ display: 'block', fontSize: '0.6rem', color: 'var(--text-muted)' }}>Estim\u00e9</span>
+                        <span style={{ fontWeight: 'bold', color: 'var(--accent)' }}>{m.estimatedPay + m.totalBonus} DH</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Generate pay slip button */}
+                  <button
+                    className="btn btn-primary"
+                    style={{ width: '100%', fontSize: '0.85rem' }}
+                    onClick={() => {
+                      fetch(`http://localhost:8080/api/payroll/generate/${m.userId}`, {
+                        method: 'POST',
+                        headers: {
+                          'Authorization': `Bearer ${token}`,
+                          'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                          periodStart: m.currentPeriodStart,
+                          periodEnd: m.currentPeriodEnd
+                        })
+                      })
+                        .then(async (res) => {
+                          const resData = await res.json();
+                          if (!res.ok) throw new Error(resData.message || 'Erreur');
+                          triggerFeedback('success', resData.message);
+                          refreshData();
+                        })
+                        .catch(err => triggerFeedback('danger', err.message));
+                    }}
+                  >
+                    <FileText size={14} style={{ marginRight: '6px' }} /> G\u00e9n\u00e9rer Fiche de Paie
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Pay Slips History Table */}
+            <div className="card">
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <FileText className="text-accent" /> Historique des Fiches de Paie
+              </h3>
+              <div style={{ overflowX: 'auto' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Moniteur</th>
+                      <th>P\u00e9riode</th>
+                      <th>Heures</th>
+                      <th>Salaire Heures</th>
+                      <th>Fixe</th>
+                      <th>Primes</th>
+                      <th>Total</th>
+                      <th>Statut</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paySlips.map(s => (
+                      <tr key={s.id}>
+                        <td style={{ fontWeight: 600 }}>{s.moniteur?.fullName}</td>
+                        <td style={{ fontSize: '0.8rem' }}>{s.periodStart} \u2192 {s.periodEnd}</td>
+                        <td>{s.totalHours}h</td>
+                        <td>{s.hoursPayment} DH</td>
+                        <td>{s.fixedSalary} DH</td>
+                        <td>
+                          {s.totalBonus > 0 ? (
+                            <span style={{ color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <Award size={12} /> +{s.totalBonus} DH ({s.examSuccessCount} exam{s.examSuccessCount > 1 ? 's' : ''})
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>0 DH</span>
+                          )}
+                        </td>
+                        <td style={{ fontWeight: 'bold', color: 'var(--accent)', fontSize: '1rem' }}>{s.totalPay} DH</td>
+                        <td>
+                          <span className={`badge ${s.status === 'PAID' ? 'badge-success' : s.status === 'CANCELLED' ? 'badge-danger' : 'badge-warning'}`} style={{ fontSize: '0.65rem' }}>
+                            {s.status === 'PAID' ? 'Pay\u00e9' : s.status === 'CANCELLED' ? 'Annul\u00e9' : 'En attente'}
+                          </span>
+                        </td>
+                        <td>
+                          {s.status === 'GENERATED' && (
+                            <button
+                              onClick={() => {
+                                fetch(`http://localhost:8080/api/payroll/slips/${s.id}/pay`, {
+                                  method: 'PUT',
+                                  headers: { 'Authorization': `Bearer ${token}` }
+                                })
+                                  .then(async (res) => {
+                                    const resData = await res.json();
+                                    if (!res.ok) throw new Error(resData.message || 'Erreur');
+                                    triggerFeedback('success', resData.message);
+                                    refreshData();
+                                  })
+                                  .catch(err => triggerFeedback('danger', err.message));
+                              }}
+                              className="btn btn-primary"
+                              style={{ padding: '4px 12px', fontSize: '0.75rem' }}
+                            >
+                              Marquer Pay\u00e9
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {paySlips.length === 0 && (
+                      <tr>
+                        <td colSpan="9" style={{ textAlign: 'center', color: 'var(--text-muted)' }}>Aucune fiche de paie g\u00e9n\u00e9r\u00e9e.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
 

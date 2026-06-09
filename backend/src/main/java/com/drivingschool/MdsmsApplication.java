@@ -31,6 +31,7 @@ public class MdsmsApplication {
             LearningPostSlotRepository learningPostSlotRepository,
             DrivingLessonSlotRepository drivingLessonSlotRepository,
             FuelRecordRepository fuelRecordRepository,
+            PaySlipRepository paySlipRepository,
             PasswordEncoder passwordEncoder) {
 
         return args -> {
@@ -84,6 +85,10 @@ public class MdsmsApplication {
                 profile1.setPhone("0611223344");
                 profile1.setCapNumber("CAP-2024-887");
                 profile1.setCapExpiryDate(LocalDate.now().plusMonths(8)); // Expiry in 8 months
+                profile1.setPayFrequency("MONTHLY");
+                profile1.setHourlyRate(50.0);
+                profile1.setFixedSalary(1500.0);
+                profile1.setBonusPerExamSuccess(50.0);
                 moniteurProfileRepository.save(profile1);
 
                 MoniteurProfile profile2 = new MoniteurProfile();
@@ -91,6 +96,10 @@ public class MdsmsApplication {
                 profile2.setPhone("0622334455");
                 profile2.setCapNumber("CAP-2023-451");
                 profile2.setCapExpiryDate(LocalDate.now().minusDays(5)); // Expiry past, for warnings testing!
+                profile2.setPayFrequency("WEEKLY");
+                profile2.setHourlyRate(45.0);
+                profile2.setFixedSalary(0.0);
+                profile2.setBonusPerExamSuccess(60.0);
                 moniteurProfileRepository.save(profile2);
 
                 // 4. Create Vehicles
@@ -374,6 +383,34 @@ public class MdsmsApplication {
                     fr.setStation(stations[(i + 2) % stations.length]);
                     fr.setNotes(i >= 8 ? "Consommation anormalement élevée !" : null);
                     fuelRecordRepository.save(fr);
+                }
+
+                // 11. Historical Pay Slips for demo
+                User[] payMoniteurs = {instructor1, instructor2};
+                MoniteurProfile[] payProfiles = {profile1, profile2};
+                for (int m = 0; m < 2; m++) {
+                    for (int month = 3; month >= 1; month--) {
+                        PaySlip slip = new PaySlip();
+                        slip.setMoniteur(payMoniteurs[m]);
+                        LocalDate pStart = LocalDate.now().minusMonths(month).withDayOfMonth(1);
+                        LocalDate pEnd = pStart.plusMonths(1).minusDays(1);
+                        slip.setPeriodStart(pStart);
+                        slip.setPeriodEnd(pEnd);
+                        slip.setGeneratedAt(pEnd.atTime(18, 0));
+                        int hours = 30 + (m * 5) + (month * 3);
+                        slip.setTotalHours(hours);
+                        slip.setHourlyRate(payProfiles[m].getHourlyRate());
+                        slip.setHoursPayment(hours * payProfiles[m].getHourlyRate());
+                        slip.setFixedSalary(payProfiles[m].getFixedSalary());
+                        int exams = month == 2 ? (m + 1) : 0;
+                        slip.setExamSuccessCount(exams);
+                        slip.setBonusPerExam(payProfiles[m].getBonusPerExamSuccess());
+                        slip.setTotalBonus(exams * payProfiles[m].getBonusPerExamSuccess());
+                        slip.setTotalPay(slip.getHoursPayment() + slip.getFixedSalary() + slip.getTotalBonus());
+                        slip.setPayFrequency(payProfiles[m].getPayFrequency());
+                        slip.setStatus(month > 1 ? "PAID" : "GENERATED");
+                        paySlipRepository.save(slip);
+                    }
                 }
             }
         };

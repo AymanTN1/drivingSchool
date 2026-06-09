@@ -29,4 +29,13 @@ public class MoniteurProfile {
     private LocalDate capExpiryDate;
 
     private Long activeVehicleId; // Vehicle associated with driving lessons
+
+    // --- Payroll Configuration ---
+    private String payFrequency = "MONTHLY"; // WEEKLY, BIWEEKLY, MONTHLY
+
+    private Double hourlyRate = 50.0; // DH per hour of driving lesson
+
+    private Double fixedSalary = 0.0; // Optional fixed base salary (DH)
+
+    private Double bonusPerExamSuccess = 50.0; // Prime per candidate passing NARSA exam
 }

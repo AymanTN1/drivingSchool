@@ -361,7 +361,7 @@ export default function LandingPage({ onLoginClick, user }) {
             <h3 style={{ color: 'white', fontWeight: 'bold', fontSize: '1.2rem', marginBottom: '20px' }}>Localisation Google Maps</h3>
             <div style={{ borderRadius: '12px', overflow: 'hidden', height: '180px', border: '1px solid rgba(255,255,255,0.1)' }}>
               <iframe 
-                src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3306.907937746401!2d-6.804245999999999!3d34.020612!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0xda76b663b655555%3A0x6a0a2df3d8d6f03e!2sAuto%20Ecole%20Karima!5e0!3m2!1sfr!2sma!4v1717800000000!5m2!1sfr!2sma" 
+                src="https://maps.google.com/maps?q=NO%2097,%20HAY%20KARIMA%20RUE%20ZARDAL,%20SAL%C3%89%2011000,%20MAROC&t=&z=16&ie=UTF8&iwloc=&output=embed" 
                 width="100%" 
                 height="100%" 
                 style={{ border: 0 }} 

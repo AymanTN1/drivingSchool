@@ -17,7 +17,7 @@ export default function Login({ onLoginSuccess, onBackClick }) {
     setLoading(true);
     setError('');
 
-    fetch('http://localhost:8080/api/auth/signin', {
+    fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/auth/signin', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

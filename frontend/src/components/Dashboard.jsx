@@ -55,7 +55,7 @@ export default function Dashboard({ authData, onLogout }) {
 
   const fetchDropdowns = () => {
     // Fetch instructors list for assignments
-    fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/admin/users', {
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/admin/users`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -65,7 +65,7 @@ export default function Dashboard({ authData, onLogout }) {
       })
       .catch(err => console.log('Error fetching moniteurs', err));
 
-    fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/assistant/fleet', {
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/assistant/fleet`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
       .then(res => res.json())
@@ -78,41 +78,41 @@ export default function Dashboard({ authData, onLogout }) {
     const headers = { 'Authorization': `Bearer ${token}` };
 
     if (role === 'ADMIN') {
-      fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/admin/analytics', { headers })
+      fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/admin/analytics`, { headers })
         .then(res => res.json())
         .then(data => setAnalytics(data))
         .catch(err => console.log('Error fetching analytics', err))
         .finally(() => setLoading(false));
 
-      fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/fleet/analytics', { headers })
+      fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/fleet/analytics`, { headers })
         .then(res => res.json())
         .then(data => setFleetAnalytics(data))
         .catch(err => console.log('Error fetching fleet analytics', err));
 
-      fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/payroll/moniteurs', { headers })
+      fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/payroll/moniteurs`, { headers })
         .then(res => res.json())
         .then(data => setPayrollData(data))
         .catch(err => console.log('Error fetching payroll', err));
 
-      fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/payroll/slips', { headers })
+      fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/payroll/slips`, { headers })
         .then(res => res.json())
         .then(data => setPaySlips(data))
         .catch(err => console.log('Error fetching pay slips', err));
     } else if (role === 'ASSISTANT') {
       // Fetch candidates list
-      fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/assistant/candidates', { headers })
+      fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/assistant/candidates`, { headers })
         .then(res => res.json())
         .then(data => setCandidates(data))
         .catch(err => console.log('Error fetching candidates', err));
 
       // Fetch transaction list
-      fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/assistant/caisse', { headers })
+      fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/assistant/caisse`, { headers })
         .then(res => res.json())
         .then(data => setTransactions(data))
         .catch(err => console.log('Error fetching caisse', err));
 
       // Fetch alerts list
-      fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/assistant/alerts', { headers })
+      fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/assistant/alerts`, { headers })
         .then(res => res.json())
         .then(data => setAlerts(data))
         .catch(err => console.log('Error fetching alerts', err))
@@ -121,18 +121,18 @@ export default function Dashboard({ authData, onLogout }) {
 
     // Fetch CRM prospects for ADMIN and ASSISTANT
     if (role === 'ADMIN' || role === 'ASSISTANT') {
-      fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/assistant/prospects', { headers })
+      fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/assistant/prospects`, { headers })
         .then(res => res.json())
         .then(data => setCrmProspects(data))
         .catch(err => console.log('Error fetching prospects', err));
     } else if (role === 'MONITEUR') {
-      fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/moniteur/lessons', { headers })
+      fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/moniteur/lessons`, { headers })
         .then(res => res.json())
         .then(data => setMoniteurLessons(data))
         .catch(err => console.log('Error fetching moniteur lessons', err))
         .finally(() => setLoading(false));
     } else if (role === 'CANDIDATE') {
-      fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/candidate/lessons', { headers })
+      fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/candidate/lessons`, { headers })
         .then(res => res.json())
         .then(data => setCandidateData(data))
         .catch(err => console.log('Error fetching candidate data', err))
@@ -153,7 +153,7 @@ export default function Dashboard({ authData, onLogout }) {
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData.entries());
 
-    fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/admin/users', {
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/admin/users`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -177,7 +177,7 @@ export default function Dashboard({ authData, onLogout }) {
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData.entries());
 
-    fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/admin/vehicles', {
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/admin/vehicles`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -211,7 +211,7 @@ export default function Dashboard({ authData, onLogout }) {
       delete data.assignedMoniteurId;
     }
 
-    fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/assistant/candidates', {
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/assistant/candidates`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -242,7 +242,7 @@ export default function Dashboard({ authData, onLogout }) {
       delete data.candidateId;
     }
 
-    fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/assistant/caisse', {
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/assistant/caisse`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -315,7 +315,7 @@ export default function Dashboard({ authData, onLogout }) {
     // Format date time to ISO
     const dateTime = `${data.date}T${data.time}:00`;
 
-    fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/candidate/driving/reserve', {
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/candidate/driving/reserve`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -341,7 +341,7 @@ export default function Dashboard({ authData, onLogout }) {
     const dateTime = `${data.date}T${data.time}:00`;
     const postNumber = parseInt(data.postNumber);
 
-    fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/candidate/pc-posts/reserve', {
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/candidate/pc-posts/reserve`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -788,7 +788,7 @@ export default function Dashboard({ authData, onLogout }) {
                     data.totalCost = parseFloat(data.totalCost);
                     data.odometerKm = parseInt(data.odometerKm);
 
-                    fetch('${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/fleet/fuel', {
+                    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/fleet/fuel`, {
                       method: 'POST',
                       headers: {
                         'Authorization': `Bearer ${token}`,

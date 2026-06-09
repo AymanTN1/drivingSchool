@@ -88,7 +88,7 @@ export default function LandingPage({ onLoginClick, user }) {
             </p>
             
             <div style={{ display: 'flex', gap: '16px' }}>
-              <a href="#postes" className="btn btn-primary pulse-button" style={{ padding: '14px 28px', fontSize: '1rem' }}>
+              <a href="#inscription" className="btn btn-primary pulse-button" style={{ padding: '14px 28px', fontSize: '1rem' }}>
                 Réserver ma séance d'apprentissage <ArrowRight size={18} />
               </a>
             </div>
@@ -221,6 +221,64 @@ export default function LandingPage({ onLoginClick, user }) {
             </p>
             <span style={{ color: '#d4af37', fontWeight: 'bold' }}>Zéro tracas pour l'élève</span>
           </div>
+        </div>
+      </section>
+
+      {/* CRM Prospect Form Section */}
+      <section id="inscription" style={{ padding: '80px 5%', background: '#0f2a4a', color: 'white' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto', background: 'rgba(255,255,255,0.05)', borderRadius: '24px', padding: '40px', border: '1px solid rgba(212,175,55,0.2)', boxShadow: '0 20px 40px rgba(0,0,0,0.2)' }}>
+          <div style={{ textAlign: 'center', marginBottom: '30px' }}>
+            <h2 style={{ fontSize: '2rem', fontWeight: 'bold', color: 'white', marginBottom: '10px' }}>
+              Commencez votre apprentissage
+            </h2>
+            <p style={{ color: '#cbd5e1' }}>
+              Laissez-nous vos coordonnées, notre assistante Karima vous contactera très rapidement pour finaliser votre inscription.
+            </p>
+          </div>
+          
+          <form 
+            onSubmit={(e) => {
+              e.preventDefault();
+              const formData = new FormData(e.target);
+              const data = Object.fromEntries(formData.entries());
+              
+              fetch('http://localhost:8080/api/public/prospects', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+              })
+              .then(res => res.json())
+              .then(resData => {
+                alert(resData.message || 'Demande envoyée !');
+                e.target.reset();
+              })
+              .catch(err => alert('Erreur lors de l\\'envoi.'));
+            }}
+            style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
+          >
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: '#cbd5e1' }}>Nom Complet</label>
+                <input required type="text" name="fullName" placeholder="Ex: Yassine El Amrani" style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: '1rem' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: '#cbd5e1' }}>Téléphone</label>
+                <input required type="text" name="phone" placeholder="Ex: 06 12 34 56 78" style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.1)', color: 'white', fontSize: '1rem' }} />
+              </div>
+            </div>
+            <div>
+              <label style={{ display: 'block', marginBottom: '8px', fontSize: '0.9rem', color: '#cbd5e1' }}>Permis Souhaité</label>
+              <select name="licenseType" style={{ width: '100%', padding: '12px 16px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.2)', background: '#1e293b', color: 'white', fontSize: '1rem' }}>
+                <option value="B">Permis B (Voiture)</option>
+                <option value="C">Permis C (Camion)</option>
+                <option value="D">Permis D (Autocar)</option>
+                <option value="A">Permis A (Moto)</option>
+              </select>
+            </div>
+            <button type="submit" className="btn btn-primary" style={{ padding: '14px', fontSize: '1.1rem', fontWeight: 'bold', marginTop: '10px' }}>
+              Demander mon inscription
+            </button>
+          </form>
         </div>
       </section>
 

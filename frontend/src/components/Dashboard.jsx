@@ -5,7 +5,8 @@ import {
 import { 
   UserPlus, Car, DollarSign, Calendar, AlertCircle, FileText, CheckCircle2, Star, 
   TrendingUp, Users, Shield, LogOut, CheckSquare, PlusCircle, Printer, X, ShieldAlert,
-  Fuel, Gauge, AlertTriangle, Activity, Banknote, Clock, Award
+  Fuel, Gauge, AlertTriangle, Activity, Banknote, Clock, Award, Phone, ArrowRight,
+  ClipboardList
 } from 'lucide-react';
 
 export default function Dashboard({ authData, onLogout }) {
@@ -28,6 +29,7 @@ export default function Dashboard({ authData, onLogout }) {
   const [fleetAnalytics, setFleetAnalytics] = useState(null);
   const [payrollData, setPayrollData] = useState([]);
   const [paySlips, setPaySlips] = useState([]);
+  const [crmProspects, setCrmProspects] = useState([]);
 
   // Modal print view
   const [contractToPrint, setContractToPrint] = useState(null);
@@ -108,6 +110,14 @@ export default function Dashboard({ authData, onLogout }) {
         .then(data => setAlerts(data))
         .catch(err => console.log('Error fetching alerts', err))
         .finally(() => setLoading(false));
+    }
+    
+    // Fetch CRM prospects for ADMIN and ASSISTANT
+    if (role === 'ADMIN' || role === 'ASSISTANT') {
+      fetch('http://localhost:8080/api/assistant/prospects', { headers })
+        .then(res => res.json())
+        .then(data => setCrmProspects(data))
+        .catch(err => console.log('Error fetching prospects', err));
     } else if (role === 'MONITEUR') {
       fetch('http://localhost:8080/api/moniteur/lessons', { headers })
         .then(res => res.json())
@@ -424,6 +434,12 @@ export default function Dashboard({ authData, onLogout }) {
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'caisse' ? 'white' : 'var(--text-muted)', background: activeTab === 'caisse' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <DollarSign size={16} /> Caisse Journalière
+              </button>
+              <button 
+                onClick={() => setActiveTab('crm')} 
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'crm' ? 'white' : 'var(--text-muted)', background: activeTab === 'crm' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
+              >
+                <ClipboardList size={16} /> CRM Prospects
               </button>
               <button 
                 onClick={() => setActiveTab('alerts')} 

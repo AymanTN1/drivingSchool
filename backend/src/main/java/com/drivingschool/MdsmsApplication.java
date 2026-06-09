@@ -32,6 +32,7 @@ public class MdsmsApplication {
             DrivingLessonSlotRepository drivingLessonSlotRepository,
             FuelRecordRepository fuelRecordRepository,
             PaySlipRepository paySlipRepository,
+            ProspectRepository prospectRepository,
             PasswordEncoder passwordEncoder) {
 
         return args -> {
@@ -412,6 +413,45 @@ public class MdsmsApplication {
                         paySlipRepository.save(slip);
                     }
                 }
+
+                // 12. Create Dummy Prospects for CRM Kanban
+                Prospect p1 = new Prospect();
+                p1.setFullName("Ahmad Chafik");
+                p1.setPhone("0699887766");
+                p1.setLicenseType("B");
+                p1.setStatus(ProspectStatus.NEW);
+                p1.setCreatedAt(LocalDate.now().minusDays(1));
+                p1.setLastContactDate(LocalDate.now().minusDays(1));
+                prospectRepository.save(p1);
+
+                Prospect p2 = new Prospect();
+                p2.setFullName("Sara Benali");
+                p2.setPhone("0688776655");
+                p2.setLicenseType("B");
+                p2.setStatus(ProspectStatus.CALLED);
+                p2.setCreatedAt(LocalDate.now().minusDays(10));
+                p2.setLastContactDate(LocalDate.now().minusDays(8)); // Alert should trigger (>7 days)
+                p2.setNotes("A dit qu'elle passera avec son pere la semaine derniere.");
+                prospectRepository.save(p2);
+
+                Prospect p3 = new Prospect();
+                p3.setFullName("Omar Tazi");
+                p3.setPhone("0677665544");
+                p3.setLicenseType("C");
+                p3.setStatus(ProspectStatus.WAITING_DOCS);
+                p3.setCreatedAt(LocalDate.now().minusDays(3));
+                p3.setLastContactDate(LocalDate.now().minusDays(2));
+                p3.setNotes("Doit ramener les photos et copie CIN");
+                prospectRepository.save(p3);
+
+                Prospect p4 = new Prospect();
+                p4.setFullName("Fatima Zahra");
+                p4.setPhone("0611111111");
+                p4.setLicenseType("B");
+                p4.setStatus(ProspectStatus.ENROLLED);
+                p4.setCreatedAt(LocalDate.now().minusDays(20));
+                p4.setLastContactDate(LocalDate.now().minusDays(15));
+                prospectRepository.save(p4);
             }
         };
     }

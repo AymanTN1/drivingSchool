@@ -14,7 +14,9 @@ export default function App() {
       try {
         const parsed = JSON.parse(storedUser);
         setUser(parsed);
-        setView('dashboard');
+        // We do NOT setView('dashboard') here anymore.
+        // We want everyone to see the beautiful landing page first!
+        // The "Se connecter" button will say "Mon Espace (Name)" instead.
       } catch (e) {
         localStorage.removeItem('mdsms_user');
       }

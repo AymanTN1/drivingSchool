@@ -42,4 +42,6 @@ public class DrivingLessonSlot {
     private String comments; // Moniteur logs progress details here (e.g. parallel park success)
 
     private Integer rating; // 1-5 scale of candidate driving capability in this lesson
+
+    private String verificationPin; // 4-digit PIN for validation
 }

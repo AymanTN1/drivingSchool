@@ -252,7 +252,7 @@ export default function LandingPage({ onLoginClick, user }) {
                 alert(resData.message || 'Demande envoyée !');
                 e.target.reset();
               })
-              .catch(err => alert('Erreur lors de l\\'envoi.'));
+              .catch(err => alert("Erreur lors de l'envoi."));
             }}
             style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}
           >

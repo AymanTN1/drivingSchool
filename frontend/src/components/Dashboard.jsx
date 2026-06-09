@@ -1,13 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line, PieChart, Pie, Cell 
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, LineChart, Line, PieChart, Pie, Cell
 } from 'recharts';
-import { 
-  UserPlus, Car, DollarSign, Calendar, AlertCircle, FileText, CheckCircle2, Star, 
+import {
+  UserPlus, Car, DollarSign, Calendar, AlertCircle, FileText, CheckCircle2, Star,
   TrendingUp, Users, Shield, LogOut, CheckSquare, PlusCircle, Printer, X, ShieldAlert,
   Fuel, Gauge, AlertTriangle, Activity, Banknote, Clock, Award, Phone, ArrowRight,
-  ClipboardList
+  ClipboardList, Scan, QrCode, Monitor
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
+import { Html5QrcodeScanner } from 'html5-qrcode';
 
 export default function Dashboard({ authData, onLogout }) {
   const { token, role, fullName } = authData;
@@ -21,7 +23,7 @@ export default function Dashboard({ authData, onLogout }) {
   const [vehicles, setVehicles] = useState([]);
   const [transactions, setTransactions] = useState([]);
   const [alerts, setAlerts] = useState([]);
-  
+
   // Role specific states
   const [analytics, setAnalytics] = useState(null);
   const [candidateData, setCandidateData] = useState(null);
@@ -33,6 +35,11 @@ export default function Dashboard({ authData, onLogout }) {
 
   // Modal print view
   const [contractToPrint, setContractToPrint] = useState(null);
+
+  // QR Code / Uberization states
+  const [qrModalOpen, setQrModalOpen] = useState(false);
+  const [selectedLessonQr, setSelectedLessonQr] = useState(null);
+  const [pinInput, setPinInput] = useState('');
 
   // Fetching context data based on Role
   useEffect(() => {
@@ -111,7 +118,7 @@ export default function Dashboard({ authData, onLogout }) {
         .catch(err => console.log('Error fetching alerts', err))
         .finally(() => setLoading(false));
     }
-    
+
     // Fetch CRM prospects for ADMIN and ASSISTANT
     if (role === 'ADMIN' || role === 'ASSISTANT') {
       fetch('http://localhost:8080/api/assistant/prospects', { headers })
@@ -148,7 +155,7 @@ export default function Dashboard({ authData, onLogout }) {
 
     fetch('http://localhost:8080/api/admin/users', {
       method: 'POST',
-      headers: { 
+      headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json'
       },
@@ -193,7 +200,7 @@ export default function Dashboard({ authData, onLogout }) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData.entries());
-    
+
     // Parse numeric/date fields
     data.totalAmount = parseFloat(data.totalAmount);
     data.amountPaid = parseFloat(data.amountPaid);
@@ -227,7 +234,7 @@ export default function Dashboard({ authData, onLogout }) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData.entries());
-    
+
     data.amount = parseFloat(data.amount);
     if (data.candidateId) {
       data.candidateId = parseInt(data.candidateId);
@@ -356,7 +363,7 @@ export default function Dashboard({ authData, onLogout }) {
 
   return (
     <div className="dashboard-container">
-      
+
       {/* Sidebar */}
       <aside className="sidebar">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '32px' }}>
@@ -382,32 +389,32 @@ export default function Dashboard({ authData, onLogout }) {
         <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px', flex: 1 }}>
           {role === 'ADMIN' && (
             <>
-              <button 
-                onClick={() => setActiveTab('analytics')} 
+              <button
+                onClick={() => setActiveTab('analytics')}
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'analytics' ? 'white' : 'var(--text-muted)', background: activeTab === 'analytics' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <TrendingUp size={16} /> Dashboard Analytics
               </button>
-              <button 
-                onClick={() => setActiveTab('staff-register')} 
+              <button
+                onClick={() => setActiveTab('staff-register')}
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'staff-register' ? 'white' : 'var(--text-muted)', background: activeTab === 'staff-register' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <UserPlus size={16} /> Créer Employés
               </button>
-              <button 
-                onClick={() => setActiveTab('fleet-register')} 
+              <button
+                onClick={() => setActiveTab('fleet-register')}
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'fleet-register' ? 'white' : 'var(--text-muted)', background: activeTab === 'fleet-register' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <Car size={16} /> Gérer Véhicules
               </button>
-              <button 
-                onClick={() => setActiveTab('fleet-fuel')} 
+              <button
+                onClick={() => setActiveTab('fleet-fuel')}
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'fleet-fuel' ? 'white' : 'var(--text-muted)', background: activeTab === 'fleet-fuel' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <Fuel size={16} /> Carburant & Rentabilité
               </button>
-              <button 
-                onClick={() => setActiveTab('payroll')} 
+              <button
+                onClick={() => setActiveTab('payroll')}
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'payroll' ? 'white' : 'var(--text-muted)', background: activeTab === 'payroll' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <Banknote size={16} /> Paie & RH
@@ -417,32 +424,32 @@ export default function Dashboard({ authData, onLogout }) {
 
           {role === 'ASSISTANT' && (
             <>
-              <button 
-                onClick={() => setActiveTab('candidates')} 
+              <button
+                onClick={() => setActiveTab('candidates')}
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'candidates' ? 'white' : 'var(--text-muted)', background: activeTab === 'candidates' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <Users size={16} /> Inscrire Candidats
               </button>
-              <button 
-                onClick={() => setActiveTab('exams-quota')} 
+              <button
+                onClick={() => setActiveTab('exams-quota')}
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'exams-quota' ? 'white' : 'var(--text-muted)', background: activeTab === 'exams-quota' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <Calendar size={16} /> Inscrire Examens NARSA
               </button>
-              <button 
-                onClick={() => setActiveTab('caisse')} 
+              <button
+                onClick={() => setActiveTab('caisse')}
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'caisse' ? 'white' : 'var(--text-muted)', background: activeTab === 'caisse' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <DollarSign size={16} /> Caisse Journalière
               </button>
-              <button 
-                onClick={() => setActiveTab('crm')} 
+              <button
+                onClick={() => setActiveTab('crm')}
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'crm' ? 'white' : 'var(--text-muted)', background: activeTab === 'crm' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <ClipboardList size={16} /> CRM Prospects
               </button>
-              <button 
-                onClick={() => setActiveTab('alerts')} 
+              <button
+                onClick={() => setActiveTab('alerts')}
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'alerts' ? 'white' : 'var(--text-muted)', background: activeTab === 'alerts' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <ShieldAlert size={16} /> Alertes Échéances
@@ -452,31 +459,37 @@ export default function Dashboard({ authData, onLogout }) {
 
           {role === 'MONITEUR' && (
             <>
-              <button 
-                onClick={() => setActiveTab('moniteur-lessons')} 
+              <button
+                onClick={() => setActiveTab('moniteur-lessons')}
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'moniteur-lessons' ? 'white' : 'var(--text-muted)', background: activeTab === 'moniteur-lessons' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <Calendar size={16} /> Mes Heures Pratiques
+              </button>
+              <button
+                onClick={() => setActiveTab('scan-lesson')}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'scan-lesson' ? 'white' : 'var(--text-muted)', background: activeTab === 'scan-lesson' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
+              >
+                <Scan size={16} /> Scanner & Démarrer
               </button>
             </>
           )}
 
           {role === 'CANDIDATE' && (
             <>
-              <button 
-                onClick={() => setActiveTab('candidate-progress')} 
+              <button
+                onClick={() => setActiveTab('candidate-progress')}
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'candidate-progress' ? 'white' : 'var(--text-muted)', background: activeTab === 'candidate-progress' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <TrendingUp size={16} /> Ma Progression & Solde
               </button>
-              <button 
-                onClick={() => setActiveTab('candidate-book-pc')} 
+              <button
+                onClick={() => setActiveTab('candidate-book-pc')}
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'candidate-book-pc' ? 'white' : 'var(--text-muted)', background: activeTab === 'candidate-book-pc' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <Monitor size={16} /> Réserver Poste PC
               </button>
-              <button 
-                onClick={() => setActiveTab('candidate-book-driving')} 
+              <button
+                onClick={() => setActiveTab('candidate-book-driving')}
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'candidate-book-driving' ? 'white' : 'var(--text-muted)', background: activeTab === 'candidate-book-driving' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <Car size={16} /> Réserver Conduite
@@ -486,7 +499,7 @@ export default function Dashboard({ authData, onLogout }) {
         </nav>
 
         {/* Logout */}
-        <button 
+        <button
           onClick={onLogout}
           style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: '#fca5a5', marginTop: '20px', textAlign: 'left', fontSize: '0.9rem' }}
           className="post-hover"
@@ -497,7 +510,7 @@ export default function Dashboard({ authData, onLogout }) {
 
       {/* Main content body */}
       <main className="dashboard-content">
-        
+
         {/* Feedback alert toast banner */}
         {feedback.msg && (
           <div style={{
@@ -554,7 +567,7 @@ export default function Dashboard({ authData, onLogout }) {
 
             {/* Graphs grid */}
             <div className="grid-2">
-              
+
               {/* Seasonality analysis of inscriptions */}
               <div className="card">
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white', marginBottom: '20px' }}>
@@ -1026,7 +1039,7 @@ export default function Dashboard({ authData, onLogout }) {
             <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <UserPlus className="text-accent" /> Créer un Compte pour le Personnel
             </h3>
-            
+
             <form onSubmit={handleCreateStaff}>
               <div className="grid-2" style={{ marginBottom: 0 }}>
                 <div className="form-group">
@@ -1060,7 +1073,7 @@ export default function Dashboard({ authData, onLogout }) {
 
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '20px', marginTop: '10px' }}>
                 <h4 style={{ fontSize: '0.9rem', color: 'var(--accent)', marginBottom: '16px' }}>Attributs supplémentaires pour Moniteur (Optionnel)</h4>
-                
+
                 <div className="grid-3">
                   <div className="form-group">
                     <label>Téléphone portable</label>
@@ -1098,7 +1111,7 @@ export default function Dashboard({ authData, onLogout }) {
         {activeTab === 'fleet-register' && (
           <div>
             <div className="grid-2">
-              
+
               {/* Form to add vehicle */}
               <div className="card">
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1201,7 +1214,7 @@ export default function Dashboard({ authData, onLogout }) {
         {activeTab === 'candidates' && (
           <div>
             <div className="grid-2">
-              
+
               {/* Inscription Form */}
               <div className="card">
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1322,9 +1335,9 @@ export default function Dashboard({ authData, onLogout }) {
                             </span>
                           </td>
                           <td>
-                            <button 
-                              onClick={() => setContractToPrint(c)} 
-                              className="btn btn-secondary" 
+                            <button
+                              onClick={() => setContractToPrint(c)}
+                              className="btn btn-secondary"
                               style={{ padding: '6px 12px', fontSize: '0.8rem' }}
                               title="Générer Contrat Type PDF"
                             >
@@ -1353,7 +1366,7 @@ export default function Dashboard({ authData, onLogout }) {
             <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Calendar className="text-accent" /> Planifier Examen Candidat (Quota NARSA)
             </h3>
-            
+
             <div style={{ padding: '12px 16px', background: 'rgba(59,130,246,0.1)', border: '1px solid #3b82f6', borderRadius: '12px', color: '#93c5fd', fontSize: '0.85rem', lineHeight: 1.5, marginBottom: '24px' }}>
               <strong>Règles de validation NARSA :</strong>
               <ul style={{ marginLeft: '20px', marginTop: '6px' }}>
@@ -1394,7 +1407,7 @@ export default function Dashboard({ authData, onLogout }) {
         {activeTab === 'caisse' && (
           <div>
             <div className="grid-2">
-              
+
               {/* Log Transaction */}
               <div className="card">
                 <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -1474,6 +1487,151 @@ export default function Dashboard({ authData, onLogout }) {
             </div>
           </div>
         )}
+        {/* 6b. ASSISTANT TAB: CRM Prospects (Kanban) */}
+        {activeTab === 'crm' && (
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <ClipboardList size={26} className="text-accent" /> Pipeline de Vente & Prospects
+              </h2>
+            </div>
+
+            {/* Kanban Board Layout */}
+            <div style={{ display: 'flex', gap: '16px', flex: 1, overflowX: 'auto', paddingBottom: '20px' }}>
+              {/* Kanban Column Builder */}
+              {[
+                { id: 'NEW', title: 'Nouveaux Prospects', color: '#3b82f6' },
+                { id: 'CALLED', title: 'Appelé - En réflexion', color: '#f59e0b' },
+                { id: 'WAITING_DOCS', title: 'Dossier en attente', color: '#8b5cf6' },
+                { id: 'ENROLLED', title: 'Inscrit / Converti', color: '#10b981' },
+                { id: 'LOST', title: 'Perdu / Annulé', color: '#ef4444' }
+              ].map(col => {
+                const colProspects = crmProspects.filter(p => p.status === col.id);
+                return (
+                  <div key={col.id} style={{ minWidth: '300px', maxWidth: '300px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <h3 style={{ fontSize: '0.95rem', fontWeight: 'bold', color: 'white', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{ width: '10px', height: '10px', borderRadius: '50%', backgroundColor: col.color }}></div>
+                        {col.title}
+                      </h3>
+                      <span style={{ fontSize: '0.8rem', background: 'rgba(255,255,255,0.1)', padding: '2px 8px', borderRadius: '10px', color: 'white' }}>{colProspects.length}</span>
+                    </div>
+
+                    <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, overflowY: 'auto' }}>
+                      {colProspects.map(p => {
+                        // Alert Logic: 7 days without contact
+                        const daysSinceContact = Math.floor((new Date() - new Date(p.lastContactDate)) / (1000 * 60 * 60 * 24));
+                        const needsAlert = ['NEW', 'CALLED', 'WAITING_DOCS'].includes(p.status) && daysSinceContact >= 7;
+
+                        return (
+                          <div key={p.id} className="card" style={{ padding: '14px', margin: 0, border: needsAlert ? '1px solid #ef4444' : '1px solid rgba(255,255,255,0.1)', position: 'relative' }}>
+                            {needsAlert && (
+                              <div style={{ position: 'absolute', top: '-10px', right: '-10px', background: '#ef4444', color: 'white', fontSize: '0.65rem', fontWeight: 'bold', padding: '4px 8px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', boxShadow: '0 4px 10px rgba(239, 68, 68, 0.4)', zIndex: 10 }}>
+                                <AlertCircle size={10} /> {daysSinceContact}j sans contact
+                              </div>
+                            )}
+                            <h4 style={{ fontSize: '1rem', fontWeight: 'bold', color: 'white', marginBottom: '6px' }}>{p.fullName}</h4>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                              <Phone size={12} /> {p.phone}
+                            </div>
+                            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}>
+                              <Car size={12} /> Permis {p.licenseType}
+                            </div>
+                            
+                            {p.notes && (
+                              <div style={{ fontSize: '0.75rem', background: 'rgba(255,255,255,0.05)', padding: '6px', borderRadius: '4px', marginBottom: '12px', fontStyle: 'italic', color: '#cbd5e1' }}>
+                                "{p.notes}"
+                              </div>
+                            )}
+
+                            {/* Status controls */}
+                            <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '10px' }}>
+                              {col.id !== 'NEW' && (
+                                <button 
+                                  onClick={() => {
+                                    fetch(`http://localhost:8080/api/assistant/prospects/${p.id}/status`, {
+                                      method: 'PUT',
+                                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ status: 'NEW' })
+                                    }).then(() => refreshData());
+                                  }}
+                                  style={{ padding: '4px 6px', fontSize: '0.65rem', background: 'rgba(255,255,255,0.1)', border: 'none', borderRadius: '4px', color: 'white', cursor: 'pointer' }}
+                                >
+                                  Nouveau
+                                </button>
+                              )}
+                              {col.id !== 'CALLED' && (
+                                <button 
+                                  onClick={() => {
+                                    fetch(`http://localhost:8080/api/assistant/prospects/${p.id}/status`, {
+                                      method: 'PUT',
+                                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ status: 'CALLED' })
+                                    }).then(() => refreshData());
+                                  }}
+                                  style={{ padding: '4px 6px', fontSize: '0.65rem', background: 'rgba(245, 158, 11, 0.2)', color: '#fcd34d', border: '1px solid rgba(245, 158, 11, 0.4)', borderRadius: '4px', cursor: 'pointer' }}
+                                >
+                                  Appelé
+                                </button>
+                              )}
+                              {col.id !== 'WAITING_DOCS' && (
+                                <button 
+                                  onClick={() => {
+                                    fetch(`http://localhost:8080/api/assistant/prospects/${p.id}/status`, {
+                                      method: 'PUT',
+                                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ status: 'WAITING_DOCS' })
+                                    }).then(() => refreshData());
+                                  }}
+                                  style={{ padding: '4px 6px', fontSize: '0.65rem', background: 'rgba(139, 92, 246, 0.2)', color: '#c4b5fd', border: '1px solid rgba(139, 92, 246, 0.4)', borderRadius: '4px', cursor: 'pointer' }}
+                                >
+                                  Dossier Att.
+                                </button>
+                              )}
+                              {col.id !== 'ENROLLED' && (
+                                <button 
+                                  onClick={() => {
+                                    fetch(`http://localhost:8080/api/assistant/prospects/${p.id}/status`, {
+                                      method: 'PUT',
+                                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ status: 'ENROLLED' })
+                                    }).then(() => refreshData());
+                                  }}
+                                  style={{ padding: '4px 6px', fontSize: '0.65rem', background: 'rgba(16, 185, 129, 0.2)', color: '#6ee7b7', border: '1px solid rgba(16, 185, 129, 0.4)', borderRadius: '4px', cursor: 'pointer' }}
+                                >
+                                  Convertir
+                                </button>
+                              )}
+                              {col.id !== 'LOST' && (
+                                <button 
+                                  onClick={() => {
+                                    fetch(`http://localhost:8080/api/assistant/prospects/${p.id}/status`, {
+                                      method: 'PUT',
+                                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ status: 'LOST' })
+                                    }).then(() => refreshData());
+                                  }}
+                                  style={{ padding: '4px 6px', fontSize: '0.65rem', background: 'rgba(239, 68, 68, 0.2)', color: '#fca5a5', border: '1px solid rgba(239, 68, 68, 0.4)', borderRadius: '4px', cursor: 'pointer' }}
+                                >
+                                  Perdu
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {colProspects.length === 0 && (
+                        <div style={{ textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '20px', fontStyle: 'italic' }}>
+                          Vide
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* 7. ASSISTANT TAB: Alerts list (VT, permit expiry warnings) */}
         {activeTab === 'alerts' && (
@@ -1481,10 +1639,10 @@ export default function Dashboard({ authData, onLogout }) {
             <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
               <ShieldAlert className="text-danger" /> Alertes et Échéances Administratives
             </h3>
-            
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {alerts.map((a, idx) => (
-                <div 
+                <div
                   key={idx}
                   style={{
                     padding: '16px',
@@ -1504,7 +1662,7 @@ export default function Dashboard({ authData, onLogout }) {
                     </strong>
                     <span style={{ fontSize: '0.85rem' }}>{a.details}</span>
                   </div>
-                  <span 
+                  <span
                     className={`badge ${a.status === 'RED' ? 'badge-danger' : 'badge-warning'}`}
                     style={{ marginLeft: 'auto' }}
                   >
@@ -1528,7 +1686,7 @@ export default function Dashboard({ authData, onLogout }) {
             <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', marginBottom: '20px' }}>
               Mes Heures Pratiques Planifiées
             </h3>
-            
+
             <div style={{ overflowX: 'auto' }}>
               <table>
                 <thead>
@@ -1566,7 +1724,7 @@ export default function Dashboard({ authData, onLogout }) {
                       </td>
                       <td>
                         {l.status === 'BOOKED' && (
-                          <button 
+                          <button
                             onClick={() => {
                               const comm = prompt("Entrez vos commentaires sur la séance :");
                               const rat = prompt("Attribuez une note d'apprentissage (1 à 5) :");
@@ -1588,6 +1746,118 @@ export default function Dashboard({ authData, onLogout }) {
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* 8b. MONITEUR TAB: Scan & Start Lesson */}
+        {activeTab === 'scan-lesson' && (
+          <div className="card" style={{ maxWidth: '600px', margin: '0 auto' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Scan className="text-accent" /> Valider Présence (QR Code / PIN)
+            </h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9rem' }}>
+              Validez la présence de l'élève pour démarrer la séance. Demandez à l'élève d'ouvrir son espace et de vous montrer son QR Code, ou demandez son code PIN à 4 chiffres.
+            </p>
+
+            <div style={{ marginBottom: '30px' }}>
+              <label style={{ display: 'block', color: 'white', marginBottom: '8px', fontSize: '0.95rem' }}>Sélectionner la séance à démarrer</label>
+              <select id="scanLessonSelect" className="form-control" style={{ marginBottom: '16px' }}>
+                <option value="">-- Choisissez une séance --</option>
+                {moniteurLessons.filter(l => l.status === 'BOOKED').map(l => (
+                  <option key={l.id} value={l.id}>
+                    {new Date(l.slotDateTime).toLocaleString()} - Candidat: {l.candidate.fullName}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid-2">
+              <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border)', textAlign: 'center' }}>
+                <QrCode size={40} style={{ color: 'var(--accent)', margin: '0 auto 12px auto' }} />
+                <h4 style={{ color: 'white', fontWeight: 'bold', marginBottom: '8px' }}>Scanner QR</h4>
+                <button 
+                  className="btn" 
+                  style={{ background: 'var(--accent)', color: 'white', width: '100%' }}
+                  onClick={() => {
+                    const lessonId = document.getElementById('scanLessonSelect').value;
+                    if (!lessonId) return alert('Veuillez sélectionner la séance d\'abord.');
+                    
+                    const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: {width: 250, height: 250} });
+                    scanner.render((decodedText) => {
+                      try {
+                        const data = JSON.parse(decodedText);
+                        if (data.slotId != lessonId) {
+                          alert("Le QR Code ne correspond pas à la séance sélectionnée !");
+                          return;
+                        }
+                        scanner.clear();
+                        
+                        fetch(`http://localhost:8080/api/moniteur/lessons/${lessonId}/start`, {
+                          method: 'POST',
+                          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ pin: data.pin })
+                        })
+                        .then(res => res.json())
+                        .then(resData => {
+                          if (resData.message.includes('succès')) {
+                            triggerFeedback('success', resData.message);
+                            refreshData();
+                          } else {
+                            triggerFeedback('danger', resData.message);
+                          }
+                        });
+                      } catch(e) {
+                        alert("QR Code invalide");
+                      }
+                    }, (err) => { /* ignore scans */ });
+                  }}
+                >
+                  Ouvrir Caméra
+                </button>
+                <div id="reader" style={{ marginTop: '16px', borderRadius: '8px', overflow: 'hidden' }}></div>
+              </div>
+
+              <div style={{ padding: '20px', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border)', textAlign: 'center' }}>
+                <CheckSquare size={40} style={{ color: 'var(--warning)', margin: '0 auto 12px auto' }} />
+                <h4 style={{ color: 'white', fontWeight: 'bold', marginBottom: '8px' }}>Saisir Code PIN</h4>
+                <input 
+                  type="text" 
+                  placeholder="Ex: 1234" 
+                  maxLength="4"
+                  value={pinInput}
+                  onChange={(e) => setPinInput(e.target.value)}
+                  className="form-control" 
+                  style={{ textAlign: 'center', fontSize: '1.2rem', letterSpacing: '4px', marginBottom: '12px' }} 
+                />
+                <button 
+                  className="btn" 
+                  style={{ background: 'var(--warning)', color: 'white', width: '100%' }}
+                  onClick={() => {
+                    const lessonId = document.getElementById('scanLessonSelect').value;
+                    if (!lessonId) return alert('Veuillez sélectionner la séance d\'abord.');
+                    if (pinInput.length !== 4) return alert('Le PIN doit faire 4 chiffres.');
+
+                    fetch(`http://localhost:8080/api/moniteur/lessons/${lessonId}/start`, {
+                      method: 'POST',
+                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ pin: pinInput })
+                    })
+                    .then(res => res.json())
+                    .then(resData => {
+                      if (resData.message.includes('succès')) {
+                        triggerFeedback('success', resData.message);
+                        refreshData();
+                        setPinInput('');
+                      } else {
+                        triggerFeedback('danger', resData.message);
+                      }
+                    });
+                  }}
+                >
+                  Valider PIN
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -1623,7 +1893,7 @@ export default function Dashboard({ authData, onLogout }) {
 
             {/* Invoices details & driving list */}
             <div className="grid-2">
-              
+
               <div className="card">
                 <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white', marginBottom: '20px' }}>
                   Mon Relevé Financier
@@ -1657,7 +1927,23 @@ export default function Dashboard({ authData, onLogout }) {
                         <span style={{ display: 'block', fontSize: '0.85rem', color: 'white' }}>{new Date(l.slotDateTime).toLocaleDateString()} à {new Date(l.slotDateTime).getHours()}h</span>
                         <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{l.comments || 'Aucun commentaire'}</span>
                       </div>
-                      <span className={`badge ${l.status === 'BOOKED' ? 'badge-warning' : 'badge-success'}`}>{l.status}</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {l.status === 'BOOKED' && (
+                          <button 
+                            className="btn" 
+                            style={{ padding: '4px 8px', fontSize: '0.7rem', background: 'rgba(59, 130, 246, 0.2)', color: '#93c5fd', border: '1px solid rgba(59, 130, 246, 0.4)' }}
+                            onClick={() => {
+                              setSelectedLessonQr(l);
+                              setQrModalOpen(true);
+                            }}
+                          >
+                            <QrCode size={12} style={{ marginRight: '4px' }}/> Voir QR
+                          </button>
+                        )}
+                        <span className={`badge ${l.status === 'BOOKED' ? 'badge-warning' : l.status === 'IN_PROGRESS' ? 'badge-primary' : 'badge-success'}`}>
+                          {l.status === 'IN_PROGRESS' ? 'EN COURS' : l.status}
+                        </span>
+                      </div>
                     </div>
                   ))}
                   {candidateData.drivingLessons.length === 0 && (
@@ -1676,13 +1962,13 @@ export default function Dashboard({ authData, onLogout }) {
             <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', marginBottom: '20px' }}>
               Réserver ma Séance sur Poste Code Rousseau
             </h3>
-            
+
             <form onSubmit={handleBookPc}>
               <div className="form-group">
                 <label>Sélectionner le Poste (1 à 15)</label>
                 <select name="postNumber" className="form-control" required>
                   {Array.from({ length: 15 }, (_, i) => (
-                    <option key={i+1} value={i+1}>Poste d'apprentissage #{i+1}</option>
+                    <option key={i + 1} value={i + 1}>Poste d'apprentissage #{i + 1}</option>
                   ))}
                 </select>
               </div>
@@ -1720,7 +2006,7 @@ export default function Dashboard({ authData, onLogout }) {
             <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', marginBottom: '20px' }}>
               Planifier une Heure de Conduite
             </h3>
-            
+
             <form onSubmit={handleBookDriving}>
               <div className="grid-2" style={{ marginBottom: 0 }}>
                 <div className="form-group">
@@ -1755,10 +2041,10 @@ export default function Dashboard({ authData, onLogout }) {
       {contractToPrint && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, overflowY: 'auto', padding: '40px 0' }}>
           <div style={{ background: '#ffffff', color: '#1e293b', padding: '40px', width: '210mm', minHeight: '297mm', position: 'relative', border: '1px solid #ddd', boxShadow: '0 10px 30px rgba(0,0,0,0.5)', fontFamily: 'sans-serif' }}>
-            
+
             {/* Close action */}
-            <button 
-              onClick={() => setContractToPrint(null)} 
+            <button
+              onClick={() => setContractToPrint(null)}
               style={{ position: 'absolute', top: '15px', right: '15px', width: '36px', height: '36px', borderRadius: '50%', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}
               className="no-print"
             >
@@ -1809,7 +2095,7 @@ export default function Dashboard({ authData, onLogout }) {
               <p style={{ fontSize: '0.9rem', lineHeight: '1.5', marginBottom: '12px' }}>
                 Le présent contrat engage l'établissement à fournir une formation théorique (code de la route) et pratique (conduite automobile) en vue de l'obtention du permis de conduire marocain. Le candidat s'engage à respecter le règlement et à honorer ses versements financiers.
               </p>
-              
+
               <div style={{ padding: '16px', background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '20px', textAlign: 'center' }}>
                   <div>
@@ -1842,15 +2128,15 @@ export default function Dashboard({ authData, onLogout }) {
 
             {/* Bottom Print Actions */}
             <div style={{ position: 'absolute', bottom: '-60px', left: 0, right: 0, display: 'flex', gap: '12px', justifyContent: 'center' }} className="no-print">
-              <button 
-                onClick={() => window.print()} 
+              <button
+                onClick={() => window.print()}
                 className="btn btn-primary"
                 style={{ padding: '10px 20px' }}
               >
                 Imprimer le Contrat
               </button>
-              <button 
-                onClick={() => setContractToPrint(null)} 
+              <button
+                onClick={() => setContractToPrint(null)}
                 className="btn btn-secondary"
                 style={{ padding: '10px 20px' }}
               >
@@ -1858,6 +2144,46 @@ export default function Dashboard({ authData, onLogout }) {
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* QR CODE MODAL FOR CANDIDATE */}
+      {qrModalOpen && selectedLessonQr && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.8)', backdropFilter: 'blur(4px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ background: '#1e293b', padding: '40px', borderRadius: '24px', width: '400px', maxWidth: '90%', textAlign: 'center', position: 'relative', border: '1px solid rgba(255,255,255,0.1)', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+            <button 
+              onClick={() => setQrModalOpen(false)}
+              style={{ position: 'absolute', top: '16px', right: '16px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
+            >
+              <X size={24} />
+            </button>
+            
+            <h3 style={{ color: 'white', fontSize: '1.25rem', fontWeight: 'bold', marginBottom: '8px' }}>
+              Présentez ce code à {selectedLessonQr.moniteur.fullName}
+            </h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '30px' }}>
+              Date: {new Date(selectedLessonQr.slotDateTime).toLocaleString()}
+            </p>
+
+            <div style={{ background: 'white', padding: '20px', borderRadius: '16px', display: 'inline-block', marginBottom: '20px' }}>
+              <QRCodeSVG 
+                value={JSON.stringify({ 
+                  slotId: selectedLessonQr.id, 
+                  candidateId: selectedLessonQr.candidate.id,
+                  pin: selectedLessonQr.verificationPin 
+                })} 
+                size={200} 
+                level="H"
+              />
+            </div>
+
+            <div style={{ borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '20px' }}>
+              <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '8px' }}>Ou communiquez le code PIN :</span>
+              <span style={{ fontSize: '2rem', fontWeight: 'bold', letterSpacing: '8px', color: 'var(--warning)', background: 'rgba(245, 158, 11, 0.1)', padding: '10px 20px', borderRadius: '12px', display: 'inline-block' }}>
+                {selectedLessonQr.verificationPin}
+              </span>
+            </div>
           </div>
         </div>
       )}

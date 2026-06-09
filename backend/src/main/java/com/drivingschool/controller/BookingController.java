@@ -297,6 +297,11 @@ public class BookingController {
         lesson.setVehicle(vehicle);
         lesson.setSlotDateTime(slotTime);
         lesson.setStatus(BookingStatus.BOOKED);
+        
+        // Generate a 4-digit PIN for presence verification
+        String pin = String.format("%04d", new Random().nextInt(10000));
+        lesson.setVerificationPin(pin);
+        
         drivingLessonSlotRepository.save(lesson);
 
         return ResponseEntity.ok(Map.of("message", "Séance de conduite réservée pour le " + slotTime + " avec " + moniteur.getFullName()));
@@ -333,6 +338,37 @@ public class BookingController {
         User moniteur = userRepository.findByUsername(principal.getName()).orElseThrow();
         List<DrivingLessonSlot> lessons = drivingLessonSlotRepository.findByMoniteurId(moniteur.getId());
         return ResponseEntity.ok(lessons);
+    }
+
+    @PreAuthorize("hasRole('MONITEUR')")
+    @PostMapping("/moniteur/lessons/{id}/start")
+    public ResponseEntity<?> startLesson(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body,
+            Principal principal) {
+        
+        User moniteur = userRepository.findByUsername(principal.getName()).orElseThrow();
+        DrivingLessonSlot lesson = drivingLessonSlotRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Séance introuvable"));
+
+        // Verify the lesson belongs to the logged-in moniteur
+        if (!lesson.getMoniteur().getId().equals(moniteur.getId())) {
+            return ResponseEntity.status(403).body(Map.of("message", "Vous n'êtes pas assigné à cette séance."));
+        }
+
+        if (!BookingStatus.BOOKED.equals(lesson.getStatus())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "La séance n'est pas dans un état 'Réservé'."));
+        }
+
+        String providedPin = body.get("pin");
+        if (providedPin == null || !providedPin.equals(lesson.getVerificationPin())) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Code PIN ou QR Code invalide ! Présence non validée."));
+        }
+
+        lesson.setStatus(BookingStatus.IN_PROGRESS);
+        drivingLessonSlotRepository.save(lesson);
+        
+        return ResponseEntity.ok(Map.of("message", "Présence validée avec succès ! La séance démarre."));
     }
 
     @PreAuthorize("hasRole('MONITEUR')")

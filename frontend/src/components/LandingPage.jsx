@@ -17,7 +17,7 @@ export default function LandingPage({ onLoginClick, user }) {
 
   useEffect(() => {
     // Fetch real-time status from backend
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/public/pc-posts`)
+    fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/public/pc-posts`)
       .then(res => res.json())
       .then(data => {
         if (data.posts) {
@@ -242,7 +242,7 @@ export default function LandingPage({ onLoginClick, user }) {
               const formData = new FormData(e.target);
               const data = Object.fromEntries(formData.entries());
               
-              fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/public/prospects`, {
+              fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/public/prospects`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(data)

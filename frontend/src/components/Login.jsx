@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { LogIn, ArrowLeft, Lock, User, AlertCircle } from 'lucide-react';
+import { LogIn, ArrowLeft, Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
 
 export default function Login({ onLoginSuccess, onBackClick }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 

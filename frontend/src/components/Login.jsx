@@ -18,7 +18,7 @@ export default function Login({ onLoginSuccess, onBackClick }) {
     setLoading(true);
     setError('');
 
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/auth/signin`, {
+    fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/auth/signin`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -49,7 +49,7 @@ export default function Login({ onLoginSuccess, onBackClick }) {
     setLoading(true);
     setError('');
 
-    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/auth/signin`, {
+    fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/auth/signin`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: demoUser, password: demoPass })

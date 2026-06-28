@@ -42,6 +42,27 @@ export default function Login({ onLoginSuccess, onBackClick }) {
       });
   };
 
+  const handleDemoLogin = (demoUser, demoPass) => {
+    setUsername(demoUser);
+    setPassword(demoPass);
+    setLoading(true);
+    setError('');
+
+    fetch(`${import.meta.env.VITE_API_URL || "http://localhost:8080"}/api/auth/signin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: demoUser, password: demoPass })
+    })
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || 'Identifiants invalides');
+        return data;
+      })
+      .then(data => onLoginSuccess(data))
+      .catch(err => setError(err.message || 'Impossible de se connecter au serveur backend.'))
+      .finally(() => setLoading(false));
+  };
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -69,7 +90,10 @@ export default function Login({ onLoginSuccess, onBackClick }) {
             color: 'var(--text-muted)',
             fontSize: '0.85rem',
             marginBottom: '24px',
-            transition: 'color 0.2s'
+            transition: 'color 0.2s',
+            background: 'none',
+            border: 'none',
+            cursor: 'pointer'
           }}
           className="post-hover"
         >
@@ -92,7 +116,7 @@ export default function Login({ onLoginSuccess, onBackClick }) {
           }}>
             <LogIn size={26} />
           </div>
-          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white' }}>Connexion Espace</h2>
+          <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: 'white', margin: 0 }}>Connexion Espace</h2>
           <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Auto École Karima (Salé)</span>
         </div>
 
@@ -117,7 +141,7 @@ export default function Login({ onLoginSuccess, onBackClick }) {
         <form onSubmit={handleSubmit}>
           
           <div className="form-group">
-            <label htmlFor="username">Nom d'utilisateur</label>
+            <label htmlFor="username" style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Nom d'utilisateur</label>
             <div style={{ position: 'relative' }}>
               <User size={18} style={{ position: 'absolute', left: '14px', top: '15px', color: 'var(--text-muted)' }} />
               <input 
@@ -127,13 +151,13 @@ export default function Login({ onLoginSuccess, onBackClick }) {
                 placeholder="Ex: admin / karima"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                style={{ paddingLeft: '44px' }}
+                style={{ paddingLeft: '44px', width: '100%', boxSizing: 'border-box' }}
               />
             </div>
           </div>
 
-          <div className="form-group" style={{ marginBottom: '32px' }}>
-            <label htmlFor="password">Mot de passe</label>
+          <div className="form-group" style={{ marginBottom: '32px', marginTop: '16px' }}>
+            <label htmlFor="password" style={{ display: 'block', marginBottom: '8px', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Mot de passe</label>
             <div style={{ position: 'relative' }}>
               <Lock size={18} style={{ position: 'absolute', left: '14px', top: '15px', color: 'var(--text-muted)' }} />
               <input 
@@ -143,7 +167,7 @@ export default function Login({ onLoginSuccess, onBackClick }) {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                style={{ paddingLeft: '44px' }}
+                style={{ paddingLeft: '44px', width: '100%', boxSizing: 'border-box' }}
               />
             </div>
           </div>
@@ -151,15 +175,56 @@ export default function Login({ onLoginSuccess, onBackClick }) {
           <button 
             type="submit" 
             className="btn btn-primary" 
-            style={{ width: '100%', padding: '14px', fontSize: '1rem' }}
+            style={{ width: '100%', padding: '14px', fontSize: '1rem', cursor: 'pointer' }}
             disabled={loading}
           >
             {loading ? 'Connexion en cours...' : 'Se connecter'}
           </button>
         </form>
 
-        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-          Par défaut: **admin** / **admin123** (Directeur)
+        {/* DEMO ACCESS FOR PORTFOLIO */}
+        <div style={{ marginTop: '32px', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '24px' }}>
+          <div style={{ textAlign: 'center', fontSize: '0.85rem', color: 'var(--accent)', marginBottom: '16px', fontWeight: 'bold' }}>
+            Accès rapide (Mode Portfolio) :
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <button 
+              type="button" 
+              onClick={() => handleDemoLogin('admin', 'admin123')}
+              className="btn" 
+              style={{ padding: '8px', fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
+              disabled={loading}
+            >
+              👑 Admin
+            </button>
+            <button 
+              type="button" 
+              onClick={() => handleDemoLogin('karima', 'karima123')}
+              className="btn" 
+              style={{ padding: '8px', fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
+              disabled={loading}
+            >
+              👩‍💼 Assistant
+            </button>
+            <button 
+              type="button" 
+              onClick={() => handleDemoLogin('youssef', 'youssef123')}
+              className="btn" 
+              style={{ padding: '8px', fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
+              disabled={loading}
+            >
+              🚗 Moniteur
+            </button>
+            <button 
+              type="button" 
+              onClick={() => handleDemoLogin('student1', 'student123')}
+              className="btn" 
+              style={{ padding: '8px', fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
+              disabled={loading}
+            >
+              🎓 Candidat
+            </button>
+          </div>
         </div>
       </div>
     </div>

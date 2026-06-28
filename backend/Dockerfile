@@ -11,5 +11,5 @@ WORKDIR /app
 COPY --from=build /app/target/*.jar app.jar
 RUN mkdir -p data
 EXPOSE 8080
-# Render free tier = 512MB RAM, on doit limiter la JVM
-ENTRYPOINT ["java", "-Xmx300m", "-Xms128m", "-XX:+UseSerialGC", "-jar", "app.jar"]
+# Render free tier = 512MB RAM, on active le profil prod pour PostgreSQL
+ENTRYPOINT ["java", "-Xmx300m", "-Xms128m", "-XX:+UseSerialGC", "-Dspring.profiles.active=prod", "-jar", "app.jar"]

@@ -1,6 +1,6 @@
 // Centralized API base URL helper
-// In production (Vercel), requests go through Vercel's proxy to avoid CORS
-// In development, requests go directly to localhost
-const API_BASE = import.meta.env.VITE_API_URL || "http://localhost:8080";
+// En local: utilise VITE_API_URL depuis .env (http://localhost:8080)  
+// En production (Vercel): VITE_API_URL pas defini -> "" -> requetes relatives -> proxy Vercel
+const API_BASE = import.meta.env.VITE_API_URL ?? "";
 
 export default API_BASE;

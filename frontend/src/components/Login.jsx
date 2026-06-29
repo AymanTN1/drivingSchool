@@ -207,15 +207,6 @@ export default function Login({ onLoginSuccess, onBackClick }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <button 
               type="button" 
-              onClick={() => handleDemoLogin('student1', 'student123')}
-              className="btn btn-primary" 
-              style={{ padding: '10px', fontSize: '0.85rem', gridColumn: 'span 2', cursor: 'pointer', background: 'var(--accent)', color: 'white', border: 'none' }}
-              disabled={loading}
-            >
-              🎓 Voir la Démo (Espace Étudiant)
-            </button>
-            <button 
-              type="button" 
               onClick={() => handleDemoLogin('admin', 'admin123')}
               className="btn" 
               style={{ padding: '8px', fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
@@ -240,6 +231,15 @@ export default function Login({ onLoginSuccess, onBackClick }) {
               disabled={loading}
             >
               🚗 Moniteur
+            </button>
+            <button 
+              type="button" 
+              onClick={() => handleDemoLogin('student1', 'student123')}
+              className="btn" 
+              style={{ padding: '8px', fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', cursor: 'pointer' }}
+              disabled={loading}
+            >
+              🎓 Candidat
             </button>
           </div>
         </div>

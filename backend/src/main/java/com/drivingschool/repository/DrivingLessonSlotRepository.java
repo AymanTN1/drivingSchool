@@ -15,6 +15,8 @@ public interface DrivingLessonSlotRepository extends JpaRepository<DrivingLesson
     List<DrivingLessonSlot> findByCandidateId(Long candidateId);
     List<DrivingLessonSlot> findByMoniteurId(Long moniteurId);
     List<DrivingLessonSlot> findBySlotDateTimeBetweenAndStatus(LocalDateTime start, LocalDateTime end, BookingStatus status);
+    
+    long countByVehicleIdAndStatus(Long vehicleId, BookingStatus status);
 
     @Query("SELECT COUNT(d) FROM DrivingLessonSlot d WHERE d.candidate.id = :candidateId " +
            "AND d.slotDateTime >= :start AND d.slotDateTime <= :end AND d.status <> 'CANCELLED'")

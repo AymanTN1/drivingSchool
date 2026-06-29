@@ -195,6 +195,9 @@ public class PayrollController {
 
     // --- Helper: Calculate current pay period ---
     private LocalDate[] getCurrentPeriod(String frequency) {
+        if (frequency == null) {
+            frequency = "MONTHLY";
+        }
         LocalDate today = LocalDate.now();
         LocalDate start, end;
 

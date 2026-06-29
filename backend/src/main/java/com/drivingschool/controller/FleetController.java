@@ -123,10 +123,7 @@ public class FleetController {
             totalLiters += vehicleTotalLiters;
 
             // Calculate cost per driving hour
-            long totalDrivingHours = drivingLessonSlotRepository.findAll().stream()
-                    .filter(d -> d.getVehicle() != null && d.getVehicle().getId().equals(vehicle.getId()))
-                    .filter(d -> d.getStatus() == BookingStatus.COMPLETED)
-                    .count(); // Each lesson = 1 hour
+            long totalDrivingHours = drivingLessonSlotRepository.countByVehicleIdAndStatus(vehicle.getId(), BookingStatus.COMPLETED);
 
             double costPerHour = totalDrivingHours > 0 ? vehicleTotalCost / totalDrivingHours : 0;
 

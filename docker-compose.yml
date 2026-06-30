@@ -1,32 +1,65 @@
 version: '3.8'
-services:
-  backend:
-    build:
-      context: ./backend
-      dockerfile: Dockerfile
-    ports:
-      - "8080:8080"
-    volumes:
-      - backend-data:/app/data
-    networks:
-      - mdsms-network
 
+services:
+  # -----------------------------------------------------------
+  # ZONE DÉMILITARISÉE (DMZ) - Exposée à Internet
+  # -----------------------------------------------------------
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+    container_name: erp-frontend-waf
     ports:
-      - "5173:5173"
-    environment:
-      - VITE_API_BASE_URL=http://localhost:8080/api
+      - "80:8080" # Exposed to outside world on port 80 (image uses 8080 internally)
     networks:
-      - mdsms-network
+      - dmz_net
     depends_on:
       - backend
 
-volumes:
-  backend-data:
+  # -----------------------------------------------------------
+  # ZONE MIXTE - Fait le pont entre DMZ et LAN
+  # -----------------------------------------------------------
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: erp-backend-api
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/drivingschool
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=admin
+    # Note: On N'EXPOSE PAS le port 8080 sur la machine hôte (pas de "ports:")
+    # Le backend n'est accessible que par le Frontend (Nginx WAF)
+    networks:
+      - dmz_net  # Reçoit le trafic légitime du WAF
+      - lan_net  # Accède à la base de données sécurisée
+    depends_on:
+      - db
+
+  # -----------------------------------------------------------
+  # RÉSEAU LOCAL SÉCURISÉ (LAN) - Aucune connexion internet
+  # -----------------------------------------------------------
+  db:
+    image: postgres:15-alpine
+    container_name: erp-secure-db
+    environment:
+      - POSTGRES_DB=drivingschool
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=admin
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    # Note: On N'EXPOSE PAS le port 5432.
+    networks:
+      - lan_net # Isolé du monde extérieur
 
 networks:
-  mdsms-network:
+  dmz_net:
     driver: bridge
+    # Ce réseau autorise les connexions depuis l'extérieur
+  lan_net:
+    driver: bridge
+    internal: true # SECURITÉ EXTRÊME : Ce réseau ne peut pas accéder à internet, ni être accédé de l'extérieur.
+
+volumes:
+  pgdata:

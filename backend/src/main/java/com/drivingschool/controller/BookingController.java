@@ -120,14 +120,14 @@ public class BookingController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")
     @PutMapping("/assistant/candidates/{id}/exam")
     public ResponseEntity<?> scheduleNarsaExam(@PathVariable Long id, @RequestBody Map<String, String> body) {
-        CandidateProfile profile = candidateProfileRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Candidat introuvable"));
+        CandidateProfile profile = candidateProfileRepository.findByUserId(id)
+                .orElseThrow(() -> new RuntimeException("Profil Candidat introuvable pour cet utilisateur"));
 
         // ENFORCE FINANCE CONTRACT BLOCK RULE
         double balance = profile.getTotalAmount() - profile.getAmountPaid();
-        if (balance > 0) {
+        if (balance >= 1.0) { // Allows up to 0.99 DH of floating point inaccuracy or uncollected cents
             return ResponseEntity.badRequest().body(Map.of("message", 
-                    "BLOQUÉ: Le candidat a un solde débiteur de " + balance + " DH. Réservation d'examen NARSA impossible !"));
+                    "BLOQUÉ: Le candidat a un solde débiteur de " + String.format("%.2f", balance) + " DH. Réservation d'examen NARSA impossible !"));
         }
 
         String examDateStr = body.get("examDate");

@@ -10,4 +10,5 @@ import java.util.List;
 public interface PaySlipRepository extends JpaRepository<PaySlip, Long> {
     List<PaySlip> findByMoniteurIdOrderByGeneratedAtDesc(Long moniteurId);
     List<PaySlip> findAllByOrderByGeneratedAtDesc();
+    long countByMoniteurId(Long moniteurId);
 }

@@ -9,4 +9,5 @@ import java.util.Optional;
 @Repository
 public interface MoniteurProfileRepository extends JpaRepository<MoniteurProfile, Long> {
     Optional<MoniteurProfile> findByUserId(Long userId);
+    List<MoniteurProfile> findByCapExpiryDateBetween(java.time.LocalDate start, java.time.LocalDate end);
 }

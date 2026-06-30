@@ -147,73 +147,61 @@ public class DashboardController {
         LocalDate today = LocalDate.now();
 
         // 1. Expiration Permis d'apprendre (< 30 days or expired)
-        List<CandidateProfile> candidates = candidateProfileRepository.findAll();
+        List<CandidateProfile> candidates = candidateProfileRepository.findByPermitExpiryDateBetween(today.minusDays(365), today.plusDays(30));
         for (CandidateProfile c : candidates) {
-            if (c.getPermitExpiryDate() != null) {
-                long daysLeft = java.time.temporal.ChronoUnit.DAYS.between(today, c.getPermitExpiryDate());
-                if (daysLeft <= 30) {
-                    Map<String, Object> alert = new HashMap<>();
-                    alert.put("type", "PERMIT");
-                    alert.put("target", c.getUser().getFullName());
-                    alert.put("details", "Permis d'apprendre expire le " + c.getPermitExpiryDate() + " (" + daysLeft + " jours restants)");
-                    alert.put("status", daysLeft <= 0 ? "RED" : "ORANGE");
-                    alertsList.add(alert);
-                }
-            }
+            long daysLeft = java.time.temporal.ChronoUnit.DAYS.between(today, c.getPermitExpiryDate());
+            Map<String, Object> alert = new HashMap<>();
+            alert.put("type", "PERMIT");
+            alert.put("target", c.getUser().getFullName());
+            alert.put("details", "Permis d'apprendre expire le " + c.getPermitExpiryDate() + " (" + daysLeft + " jours restants)");
+            alert.put("status", daysLeft <= 0 ? "RED" : "ORANGE");
+            alertsList.add(alert);
         }
 
         // 2. Expiration Visite Technique, Assurance, Vignette Véhicules
-        List<Vehicle> vehicles = vehicleRepository.findAll();
-        for (Vehicle v : vehicles) {
-            if (v.getNextTechnicalVisit() != null) {
-                long vtDays = java.time.temporal.ChronoUnit.DAYS.between(today, v.getNextTechnicalVisit());
-                if (vtDays <= 30) {
-                    Map<String, Object> alert = new HashMap<>();
-                    alert.put("type", "VEHICLE_VT");
-                    alert.put("target", v.getBrand() + " " + v.getModel() + " (" + v.getLicensePlate() + ")");
-                    alert.put("details", "Visite technique expulse le " + v.getNextTechnicalVisit() + " (" + vtDays + " jours restants)");
-                    alert.put("status", vtDays <= 0 ? "RED" : "ORANGE");
-                    alertsList.add(alert);
-                }
-            }
-            if (v.getVignetteExpiryDate() != null) {
-                long vigDays = java.time.temporal.ChronoUnit.DAYS.between(today, v.getVignetteExpiryDate());
-                if (vigDays <= 30) {
-                    Map<String, Object> alert = new HashMap<>();
-                    alert.put("type", "VEHICLE_VIGNETTE");
-                    alert.put("target", v.getBrand() + " " + v.getModel() + " (" + v.getLicensePlate() + ")");
-                    alert.put("details", "Vignette expire le " + v.getVignetteExpiryDate() + " (" + vigDays + " jours restants)");
-                    alert.put("status", vigDays <= 0 ? "RED" : "ORANGE");
-                    alertsList.add(alert);
-                }
-            }
-            if (v.getInsuranceExpiryDate() != null) {
-                long insDays = java.time.temporal.ChronoUnit.DAYS.between(today, v.getInsuranceExpiryDate());
-                if (insDays <= 30) {
-                    Map<String, Object> alert = new HashMap<>();
-                    alert.put("type", "VEHICLE_INSURANCE");
-                    alert.put("target", v.getBrand() + " " + v.getModel() + " (" + v.getLicensePlate() + ")");
-                    alert.put("details", "Assurance expire le " + v.getInsuranceExpiryDate() + " (" + insDays + " jours restants)");
-                    alert.put("status", insDays <= 0 ? "RED" : "ORANGE");
-                    alertsList.add(alert);
-                }
-            }
+        List<Vehicle> vtVehicles = vehicleRepository.findByNextTechnicalVisitBetween(today.minusDays(365), today.plusDays(30));
+        for (Vehicle v : vtVehicles) {
+            long vtDays = java.time.temporal.ChronoUnit.DAYS.between(today, v.getNextTechnicalVisit());
+            Map<String, Object> alert = new HashMap<>();
+            alert.put("type", "VEHICLE_VT");
+            alert.put("target", v.getBrand() + " " + v.getModel() + " (" + v.getLicensePlate() + ")");
+            alert.put("details", "Visite technique expulse le " + v.getNextTechnicalVisit() + " (" + vtDays + " jours restants)");
+            alert.put("status", vtDays <= 0 ? "RED" : "ORANGE");
+            alertsList.add(alert);
+        }
+
+        List<Vehicle> vigVehicles = vehicleRepository.findByVignetteExpiryDateBetween(today.minusDays(365), today.plusDays(30));
+        for (Vehicle v : vigVehicles) {
+            long vigDays = java.time.temporal.ChronoUnit.DAYS.between(today, v.getVignetteExpiryDate());
+            Map<String, Object> alert = new HashMap<>();
+            alert.put("type", "VEHICLE_VIGNETTE");
+            alert.put("target", v.getBrand() + " " + v.getModel() + " (" + v.getLicensePlate() + ")");
+            alert.put("details", "Vignette expire le " + v.getVignetteExpiryDate() + " (" + vigDays + " jours restants)");
+            alert.put("status", vigDays <= 0 ? "RED" : "ORANGE");
+            alertsList.add(alert);
+        }
+
+        List<Vehicle> insVehicles = vehicleRepository.findByInsuranceExpiryDateBetween(today.minusDays(365), today.plusDays(30));
+        for (Vehicle v : insVehicles) {
+            long insDays = java.time.temporal.ChronoUnit.DAYS.between(today, v.getInsuranceExpiryDate());
+            Map<String, Object> alert = new HashMap<>();
+            alert.put("type", "VEHICLE_INSURANCE");
+            alert.put("target", v.getBrand() + " " + v.getModel() + " (" + v.getLicensePlate() + ")");
+            alert.put("details", "Assurance expire le " + v.getInsuranceExpiryDate() + " (" + insDays + " jours restants)");
+            alert.put("status", insDays <= 0 ? "RED" : "ORANGE");
+            alertsList.add(alert);
         }
 
         // 3. Expiration CAP Moniteurs
-        List<MoniteurProfile> moniteurs = moniteurProfileRepository.findAll();
+        List<MoniteurProfile> moniteurs = moniteurProfileRepository.findByCapExpiryDateBetween(today.minusDays(365), today.plusDays(30));
         for (MoniteurProfile m : moniteurs) {
-            if (m.getCapExpiryDate() != null) {
-                long capDays = java.time.temporal.ChronoUnit.DAYS.between(today, m.getCapExpiryDate());
-                if (capDays <= 30) {
-                    Map<String, Object> alert = new HashMap<>();
-                    alert.put("type", "MONITEUR_CAP");
-                    alert.put("target", m.getUser().getFullName());
-                    alert.put("details", "Autorisation CAP expire le " + m.getCapExpiryDate() + " (" + capDays + " jours restants)");
-                    alert.put("status", capDays <= 0 ? "RED" : "ORANGE");
-                    alertsList.add(alert);
-                }
-            }
+            long capDays = java.time.temporal.ChronoUnit.DAYS.between(today, m.getCapExpiryDate());
+            Map<String, Object> alert = new HashMap<>();
+            alert.put("type", "MONITEUR_CAP");
+            alert.put("target", m.getUser().getFullName());
+            alert.put("details", "Autorisation CAP expire le " + m.getCapExpiryDate() + " (" + capDays + " jours restants)");
+            alert.put("status", capDays <= 0 ? "RED" : "ORANGE");
+            alertsList.add(alert);
         }
 
         return ResponseEntity.ok(alertsList);
@@ -233,18 +221,19 @@ public class DashboardController {
         Map<String, Object> data = new HashMap<>();
 
         // 1. Inscriptions trends by month (étude de demande saisonnière)
-        List<CandidateProfile> candidates = candidateProfileRepository.findAll();
+        LocalDate now = LocalDate.now();
+        LocalDate sixMonthsAgo = now.minusMonths(5).withDayOfMonth(1);
+        List<CandidateProfile> candidatesReg = candidateProfileRepository.findByRegistrationDateAfter(sixMonthsAgo);
         Map<String, Integer> regByMonth = new LinkedHashMap<>();
         
         // Initialize last 6 months including current
-        LocalDate now = LocalDate.now();
         for (int i = 5; i >= 0; i--) {
             LocalDate month = now.minusMonths(i);
             String label = month.getMonth().getDisplayName(TextStyle.SHORT, Locale.FRANCE) + " " + month.getYear();
             regByMonth.put(label, 0);
         }
 
-        for (CandidateProfile c : candidates) {
+        for (CandidateProfile c : candidatesReg) {
             if (c.getRegistrationDate() != null) {
                 LocalDate regDate = c.getRegistrationDate();
                 String label = regDate.getMonth().getDisplayName(TextStyle.SHORT, Locale.FRANCE) + " " + regDate.getYear();
@@ -265,7 +254,9 @@ public class DashboardController {
             String label = month.getMonth().getDisplayName(TextStyle.SHORT, Locale.FRANCE) + " " + month.getYear();
             examByMonth.put(label, 0);
         }
-        for (CandidateProfile c : candidates) {
+        
+        List<CandidateProfile> candidatesExam = candidateProfileRepository.findByNarsaExamDateAfter(sixMonthsAgo);
+        for (CandidateProfile c : candidatesExam) {
             if (c.getNarsaExamDate() != null) {
                 LocalDate examDate = c.getNarsaExamDate();
                 String label = examDate.getMonth().getDisplayName(TextStyle.SHORT, Locale.FRANCE) + " " + examDate.getYear();
@@ -279,11 +270,8 @@ public class DashboardController {
         data.put("examSchedules", examSeries);
 
         // 3. Finances trends (Recettes vs Reliquats cumulés)
-        double totalRevenueCollected = caisseTransactionRepository.findAll().stream()
-                .mapToDouble(CaisseTransaction::getAmount).sum();
-        
-        double totalBalanceOutstanding = candidates.stream()
-                .mapToDouble(c -> Math.max(0, c.getTotalAmount() - c.getAmountPaid())).sum();
+        double totalRevenueCollected = caisseTransactionRepository.sumAllAmounts();
+        double totalBalanceOutstanding = candidateProfileRepository.sumOutstandingBalances();
 
         data.put("financesOverview", Map.of(
                 "recettes", totalRevenueCollected,
@@ -297,7 +285,8 @@ public class DashboardController {
             String label = month.getMonth().getDisplayName(TextStyle.SHORT, Locale.FRANCE) + " " + month.getYear();
             financeByMonth.put(label, 0.0);
         }
-        List<CaisseTransaction> transactions = caisseTransactionRepository.findAll();
+        LocalDateTime sixMonthsAgoTime = now.minusMonths(5).withDayOfMonth(1).atStartOfDay();
+        List<CaisseTransaction> transactions = caisseTransactionRepository.findByDateAfter(sixMonthsAgoTime);
         for (CaisseTransaction t : transactions) {
             String label = t.getDate().getMonth().getDisplayName(TextStyle.SHORT, Locale.FRANCE) + " " + t.getDate().getYear();
             if (financeByMonth.containsKey(label)) {
@@ -310,7 +299,7 @@ public class DashboardController {
 
         // General KPI counts
         data.put("kpi", Map.of(
-                "totalCandidates", candidates.size(),
+                "totalCandidates", candidateProfileRepository.count(),
                 "totalMoniteurs", moniteurProfileRepository.count(),
                 "totalVehicles", vehicleRepository.count()
         ));

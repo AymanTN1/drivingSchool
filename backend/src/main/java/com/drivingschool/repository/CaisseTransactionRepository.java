@@ -11,4 +11,8 @@ import java.util.List;
 public interface CaisseTransactionRepository extends JpaRepository<CaisseTransaction, Long> {
     List<CaisseTransaction> findByCandidateId(Long candidateId);
     List<CaisseTransaction> findByDateBetween(LocalDateTime start, LocalDateTime end);
+    List<CaisseTransaction> findByDateAfter(LocalDateTime date);
+    
+    @org.springframework.data.jpa.repository.Query("SELECT COALESCE(SUM(c.amount), 0) FROM CaisseTransaction c")
+    Double sumAllAmounts();
 }

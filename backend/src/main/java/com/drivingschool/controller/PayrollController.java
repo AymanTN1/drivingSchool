@@ -108,7 +108,7 @@ public class PayrollController {
             data.put("totalBonus", examSuccesses * p.getBonusPerExamSuccess());
 
             // Total pay slips generated
-            data.put("totalPaySlips", paySlipRepository.findByMoniteurIdOrderByGeneratedAtDesc(p.getUser().getId()).size());
+            data.put("totalPaySlips", paySlipRepository.countByMoniteurId(p.getUser().getId()));
 
             result.add(data);
         }

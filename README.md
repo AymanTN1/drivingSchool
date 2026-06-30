@@ -14,11 +14,27 @@ L'infrastructure est déployée via `docker-compose` en séparant strictement le
 2. **LAN (Réseau Interne Sécurisé)** : `lan_net`
    - **Base de données (PostgreSQL)** : Totalement isolée de l'extérieur. Seul le conteneur Backend y a accès. Le réseau est configuré en mode `internal: true` dans Docker, rendant le sniffing ou le dump distant de la base impossible.
 
-## 🚀 Comment lancer l'infrastructure
+## 🚀 Comment lancer l'infrastructure en local
 
-```bash
-docker-compose up --build -d
-```
+1. **Configurer l'environnement**
+   Copiez le fichier `.env.example` vers `.env` et ajustez les mots de passe si nécessaire :
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Démarrer les conteneurs**
+   ```bash
+   docker-compose up --build -d
+   ```
+   > **Note** : Le système utilise des *Healthchecks*. Le backend attendra intelligemment que PostgreSQL soit prêt avant de se lancer.
 
 - Le site web (et la partie ERP) est accessible sur : `http://localhost:80`
 - Toute tentative d'attaque basique (ex: `http://localhost/?id=1' OR '1'='1`) sera bloquée et journalisée par ModSecurity (IPS).
+
+## ⚙️ Intégration Continue (CI/CD)
+
+Le projet est équipé d'une pipeline GitHub Actions (`.github/workflows/ci.yml`).
+À chaque *push* sur la branche principale, les serveurs GitHub vérifient automatiquement :
+- La compilation Java / Spring Boot.
+- Le build React / Vite.
+- La validité de l'orchestration Docker Compose.

@@ -10,11 +10,18 @@ services:
       dockerfile: Dockerfile
     container_name: erp-frontend-waf
     ports:
-      - "80:8080" # Exposed to outside world on port 80 (image uses 8080 internally)
+      - "80:8080" # Exposed to outside world on port 80
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
     networks:
       - dmz_net
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
 
   # -----------------------------------------------------------
   # ZONE MIXTE - Fait le pont entre DMZ et LAN
@@ -24,18 +31,31 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: erp-backend-api
+    env_file:
+      - .env
     environment:
-      - SPRING_PROFILES_ACTIVE=prod
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/drivingschool
-      - SPRING_DATASOURCE_USERNAME=postgres
-      - SPRING_DATASOURCE_PASSWORD=admin
-    # Note: On N'EXPOSE PAS le port 8080 sur la machine hôte (pas de "ports:")
-    # Le backend n'est accessible que par le Frontend (Nginx WAF)
+      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
+      - SPRING_DATASOURCE_USERNAME=${DB_USER}
+      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
     networks:
       - dmz_net  # Reçoit le trafic légitime du WAF
       - lan_net  # Accède à la base de données sécurisée
     depends_on:
-      - db
+      db:
+        condition: service_healthy
 
   # -----------------------------------------------------------
   # RÉSEAU LOCAL SÉCURISÉ (LAN) - Aucune connexion internet
@@ -43,23 +63,34 @@ services:
   db:
     image: postgres:15-alpine
     container_name: erp-secure-db
+    env_file:
+      - .env
     environment:
-      - POSTGRES_DB=drivingschool
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=admin
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     volumes:
       - pgdata:/var/lib/postgresql/data
-    # Note: On N'EXPOSE PAS le port 5432.
     networks:
       - lan_net # Isolé du monde extérieur
 
 networks:
   dmz_net:
     driver: bridge
-    # Ce réseau autorise les connexions depuis l'extérieur
   lan_net:
     driver: bridge
-    internal: true # SECURITÉ EXTRÊME : Ce réseau ne peut pas accéder à internet, ni être accédé de l'extérieur.
+    internal: true
 
 volumes:
   pgdata:

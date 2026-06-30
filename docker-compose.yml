@@ -85,6 +85,23 @@ services:
     networks:
       - lan_net # Isolé du monde extérieur
 
+  redis:
+    image: redis:7-alpine
+    container_name: erp-cache-redis
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+    networks:
+      - lan_net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
 networks:
   dmz_net:
     driver: bridge

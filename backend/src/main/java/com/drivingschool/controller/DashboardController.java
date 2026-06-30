@@ -104,6 +104,7 @@ public class DashboardController {
 
     @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")
     @PostMapping("/assistant/caisse")
+    @org.springframework.cache.annotation.CacheEvict(value = "analytics", allEntries = true)
     public ResponseEntity<?> recordTransaction(@RequestBody CaisseTransactionRequest request, Principal principal) {
         User assistant = userRepository.findByUsername(principal.getName()).orElseThrow();
 
@@ -217,6 +218,7 @@ public class DashboardController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin/analytics")
+    @org.springframework.cache.annotation.Cacheable("analytics")
     public ResponseEntity<?> getAnalytics() {
         Map<String, Object> data = new HashMap<>();
 

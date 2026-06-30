@@ -38,3 +38,13 @@ Le projet est équipé d'une pipeline GitHub Actions (`.github/workflows/ci.yml`
 - La compilation Java / Spring Boot.
 - Le build React / Vite.
 - La validité de l'orchestration Docker Compose.
+
+## ☁️ Infrastructure as Code (Terraform)
+
+Le dossier `terraform/` contient un blueprint de déploiement Cloud automatisé pour AWS (Amazon Web Services). 
+Ce fichier (`main.tf`) permet de provisionner un serveur EC2 entier, de configurer les règles de pare-feu Cloud (Security Groups), et de lancer tout le réseau Docker automatiquement en une seule commande :
+```bash
+cd terraform/
+terraform init
+terraform apply
+```

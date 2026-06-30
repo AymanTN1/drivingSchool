@@ -7,6 +7,12 @@ server {
     add_header X-XSS-Protection "1; mode=block";
     add_header X-Content-Type-Options "nosniff";
 
+    # Performance: Compression GZIP
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml application/xml+rss text/javascript;
+    gzip_min_length 1000;
+    gzip_proxied any;
+
     root /usr/share/nginx/html;
     index index.html;
 

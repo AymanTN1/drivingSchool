@@ -339,6 +339,33 @@ public class BookingController {
         List<DrivingLessonSlot> lessons = drivingLessonSlotRepository.findByMoniteurId(moniteur.getId());
         return ResponseEntity.ok(lessons);
     }
+    
+    // --- ASSISTANT / ADMIN: Global Calendar Management ---
+
+    @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")
+    @GetMapping("/assistant/lessons")
+    public ResponseEntity<?> getAllLessons() {
+        return ResponseEntity.ok(drivingLessonSlotRepository.findAll());
+    }
+
+    @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")
+    @PutMapping("/assistant/lessons/{id}/reschedule")
+    public ResponseEntity<?> rescheduleLesson(
+            @PathVariable Long id,
+            @RequestBody Map<String, String> body) {
+        
+        DrivingLessonSlot lesson = drivingLessonSlotRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Séance introuvable"));
+
+        String newDateStr = body.get("newSlotDateTime");
+        if (newDateStr != null) {
+            lesson.setSlotDateTime(LocalDateTime.parse(newDateStr));
+            drivingLessonSlotRepository.save(lesson);
+            return ResponseEntity.ok(Map.of("message", "Séance reprogrammée avec succès !"));
+        }
+
+        return ResponseEntity.badRequest().body(Map.of("message", "Date invalide."));
+    }
 
     @PreAuthorize("hasRole('MONITEUR')")
     @PostMapping("/moniteur/lessons/{id}/start")

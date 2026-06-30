@@ -6,10 +6,15 @@ import {
   UserPlus, Car, DollarSign, Calendar, AlertCircle, FileText, CheckCircle2, Star,
   TrendingUp, Users, Shield, LogOut, CheckSquare, PlusCircle, Printer, X, ShieldAlert,
   Fuel, Gauge, AlertTriangle, Activity, Banknote, Clock, Award, Phone, ArrowRight,
-  ClipboardList, Scan, QrCode, Monitor
+  ClipboardList, Scan, QrCode, Monitor, CalendarDays
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+
+import FullCalendar from '@fullcalendar/react';
+import dayGridPlugin from '@fullcalendar/daygrid';
+import timeGridPlugin from '@fullcalendar/timegrid';
+import interactionPlugin from '@fullcalendar/interaction';
 
 export default function Dashboard({ authData, onLogout }) {
   const { token, role, fullName } = authData;
@@ -32,6 +37,7 @@ export default function Dashboard({ authData, onLogout }) {
   const [payrollData, setPayrollData] = useState([]);
   const [paySlips, setPaySlips] = useState([]);
   const [crmProspects, setCrmProspects] = useState([]);
+  const [allLessons, setAllLessons] = useState([]);
 
   // Modal print view
   const [contractToPrint, setContractToPrint] = useState(null);
@@ -119,12 +125,17 @@ export default function Dashboard({ authData, onLogout }) {
         .finally(() => setLoading(false));
     }
 
-    // Fetch CRM prospects for ADMIN and ASSISTANT
+    // Fetch CRM prospects and Calendar for ADMIN and ASSISTANT
     if (role === 'ADMIN' || role === 'ASSISTANT') {
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/prospects`, { headers })
         .then(res => res.json())
         .then(data => setCrmProspects(data))
         .catch(err => console.log('Error fetching prospects', err));
+        
+      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/lessons`, { headers })
+        .then(res => res.json())
+        .then(data => setAllLessons(data))
+        .catch(err => console.log('Error fetching all lessons', err));
     } else if (role === 'MONITEUR') {
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/moniteur/lessons`, { headers })
         .then(res => res.json())
@@ -306,6 +317,38 @@ export default function Dashboard({ authData, onLogout }) {
       .catch(err => triggerFeedback('danger', err.message));
   };
 
+  // ADMIN/ASSISTANT Action: Reschedule driving lesson via Calendar Drag and Drop
+  const handleEventDrop = (info) => {
+    const lessonId = info.event.id;
+    const newDate = info.event.start;
+    // Format to match localdatetime expected by backend (YYYY-MM-DDTHH:mm:ss)
+    // Avoid timezone shift by getting local parts
+    const offset = newDate.getTimezoneOffset() * 60000;
+    const localISOTime = (new Date(newDate - offset)).toISOString().slice(0, -1);
+    
+    fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/lessons/${lessonId}/reschedule`, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ newSlotDateTime: localISOTime })
+    })
+      .then(async (res) => {
+        const resData = await res.json();
+        if (!res.ok) {
+          info.revert(); // Revert calendar visual if failed
+          throw new Error(resData.message || 'Erreur lors de la reprogrammation');
+        }
+        triggerFeedback('success', resData.message);
+        refreshData();
+      })
+      .catch(err => {
+        info.revert();
+        triggerFeedback('danger', err.message);
+      });
+  };
+
   // CANDIDATE Action: Book driving lesson (limited by weekly cap and vehicle checkups)
   const handleBookDriving = (e) => {
     e.preventDefault();
@@ -418,6 +461,13 @@ export default function Dashboard({ authData, onLogout }) {
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'payroll' ? 'white' : 'var(--text-muted)', background: activeTab === 'payroll' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <Banknote size={16} /> Paie & RH
+              </button>
+              <button
+                className="sidebar-btn"
+                onClick={() => setActiveTab('calendar-planning')}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'calendar-planning' ? 'white' : 'var(--text-muted)', background: activeTab === 'calendar-planning' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
+              >
+                <CalendarDays size={20} /> Calendrier Planning
               </button>
             </>
           )}
@@ -1676,6 +1726,42 @@ export default function Dashboard({ authData, onLogout }) {
                   Toutes les échéances administratives, permis, visites techniques et CAP moniteurs sont en règle.
                 </div>
               )}
+            </div>
+          </div>
+        )}
+        
+        {/* NEW TAB: Interactive Calendar for ADMIN & ASSISTANT */}
+        {activeTab === 'calendar-planning' && (
+          <div className="card" style={{ height: 'calc(100vh - 150px)', display: 'flex', flexDirection: 'column' }}>
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CalendarDays className="text-primary" /> Planning Global des Leçons de Conduite
+            </h3>
+            
+            <div style={{ flex: 1, backgroundColor: 'white', padding: '16px', borderRadius: '12px', color: 'black' }}>
+              <FullCalendar
+                plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+                initialView="timeGridWeek"
+                headerToolbar={{
+                  left: 'prev,next today',
+                  center: 'title',
+                  right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                }}
+                locale="fr"
+                slotMinTime="08:00:00"
+                slotMaxTime="20:00:00"
+                allDaySlot={false}
+                events={allLessons.map(l => ({
+                  id: l.id,
+                  title: `${l.candidate.fullName} (par ${l.moniteur.fullName})`,
+                  start: l.slotDateTime,
+                  end: new Date(new Date(l.slotDateTime).getTime() + l.durationMinutes * 60000),
+                  backgroundColor: l.status === 'COMPLETED' ? '#10b981' : (l.status === 'IN_PROGRESS' ? '#f59e0b' : '#3b82f6'),
+                  borderColor: 'transparent'
+                }))}
+                editable={true} // ENABLES DRAG AND DROP
+                eventDrop={handleEventDrop}
+                height="100%"
+              />
             </div>
           </div>
         )}

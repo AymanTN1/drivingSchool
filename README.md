@@ -1,50 +1,59 @@
-# Driving School ERP - Secure Architecture (DevSecOps)
+# Driving School Management System (ERP & CRM)
 
-Ce projet intègre une plateforme de gestion d'auto-école (ERP) avec une architecture Cloud-Native orientée **Sécurité**, modélisant un véritable réseau d'entreprise.
+Un système de planification des ressources d'entreprise (ERP) et de gestion de la relation client (CRM) conçu sur mesure pour la digitalisation complète d'une auto-école.
 
-## 🏗️ Architecture Réseau Isolée (SDN via Docker)
+## 🎯 Contexte du Projet
 
-L'infrastructure est déployée via `docker-compose` en séparant strictement les flux réseaux :
+La gestion d'une auto-école moderne va bien au-delà de la simple réservation de leçons de conduite. Elle implique une logistique complexe : suivi des paiements fragmentés, maintenance de la flotte automobile, quotas d'examens (NARSA) et gestion de la paie des moniteurs.
 
-1. **DMZ (Zone Démilitarisée)** : `dmz_net`
-   - **Frontend (Nginx / React)** : Seul composant exposé à internet (Port 80).
-   - **WAF / IPS (ModSecurity)** : Intégré directement au reverse proxy Nginx via l'image OWASP Core Rule Set. Il inspecte tout le trafic entrant pour bloquer les injections SQL, XSS et autres anomalies, agissant comme un Pare-Feu Applicatif et un Système de Prévention d'Intrusion (IPS).
-   - **Backend API (Spring Boot)** : Situé entre la DMZ et le LAN, il reçoit les requêtes filtrées depuis le reverse proxy.
+J'ai développé ce projet full-stack pour répondre à ces problématiques concrètes en centralisant toutes les opérations sur une plateforme unique, rapide et hautement sécurisée.
 
-2. **LAN (Réseau Interne Sécurisé)** : `lan_net`
-   - **Base de données (PostgreSQL)** : Totalement isolée de l'extérieur. Seul le conteneur Backend y a accès. Le réseau est configuré en mode `internal: true` dans Docker, rendant le sniffing ou le dump distant de la base impossible.
+## 💡 Fonctionnalités Principales
 
-## 🚀 Comment lancer l'infrastructure en local
+*   **Gestion Financière (Caisse)** : Suivi des versements des candidats, calcul automatique des reliquats et blocage intelligent des réservations d'examen en cas de solde débiteur.
+*   **Logistique & Flotte** : Suivi des entretiens périodiques, gestion de la consommation de carburant et calcul de rentabilité par véhicule.
+*   **Ressources Humaines** : Génération automatique des fiches de paie pour les moniteurs en fonction des heures de conduite réellement effectuées.
+*   **Planning Interactif** : Interface calendrier (drag-and-drop) pour la planification des leçons de conduite.
+*   **CRM Candidats/Prospects** : Tunnel de conversion complet, de la prise de contact initiale (Landing Page) jusqu'à l'obtention du permis.
 
-1. **Configurer l'environnement**
-   Copiez le fichier `.env.example` vers `.env` et ajustez les mots de passe si nécessaire :
-   ```bash
-   cp .env.example .env
-   ```
+## 🛠️ Stack Technique & Architecture DevSecOps
 
-2. **Démarrer les conteneurs**
-   ```bash
-   docker-compose up --build -d
-   ```
-   > **Note** : Le système utilise des *Healthchecks*. Le backend attendra intelligemment que PostgreSQL soit prêt avant de se lancer.
+Ce projet a été conçu en respectant les standards de l'industrie, avec une attention particulière portée aux performances et à la cybersécurité.
 
-- Le site web (et la partie ERP) est accessible sur : `http://localhost:80`
-- Toute tentative d'attaque basique (ex: `http://localhost/?id=1' OR '1'='1`) sera bloquée et journalisée par ModSecurity (IPS).
+**Frontend**
+*   React (Vite)
+*   Architecture orientée composants
+*   Consommation d'API RESTful (Fetch/Promises)
 
-## ⚙️ Intégration Continue (CI/CD)
+**Backend**
+*   Java 21 / Spring Boot 3
+*   Spring Security & authentification par token (JWT)
+*   Spring Data JPA / Hibernate
 
-Le projet est équipé d'une pipeline GitHub Actions (`.github/workflows/ci.yml`).
-À chaque *push* sur la branche principale, les serveurs GitHub vérifient automatiquement :
-- La compilation Java / Spring Boot.
-- Le build React / Vite.
-- La validité de l'orchestration Docker Compose.
+**Bases de Données & Optimisations**
+*   PostgreSQL 15 (Données relationnelles complexes)
+*   **Redis** : Mise en cache (In-Memory) des requêtes analytiques lourdes (temps de réponse réduit à ~5ms).
+*   Indexation SQL ciblée pour garantir de bonnes performances de lecture sur les grosses volumétries.
 
-## ☁️ Infrastructure as Code (Terraform)
+**Infrastructure, Sécurité & CI/CD**
+L'application est conteneurisée et segmentée (DMZ/LAN) pour simuler un réseau d'entreprise strict.
+*   **Docker & Docker Compose** : Isolation du Backend/DB (réseau `lan_net` sans accès internet) et exposition du Frontend (réseau `dmz_net`).
+*   **Nginx & ModSecurity (WAF/IPS)** : Le trafic entrant est inspecté en temps réel par les règles OWASP Core Rule Set pour bloquer les injections SQL et failles XSS. (Compression Gzip activée pour les performances).
+*   **Terraform** : Blueprint d'Infrastructure-as-Code (IaC) disponible dans `terraform/` pour provisionner automatiquement l'environnement (EC2, Security Groups) sur AWS.
+*   **GitHub Actions** : Pipeline d'intégration continue validant la compilation Java et le build React à chaque push.
 
-Le dossier `terraform/` contient un blueprint de déploiement Cloud automatisé pour AWS (Amazon Web Services). 
-Ce fichier (`main.tf`) permet de provisionner un serveur EC2 entier, de configurer les règles de pare-feu Cloud (Security Groups), et de lancer tout le réseau Docker automatiquement en une seule commande :
-```bash
-cd terraform/
-terraform init
-terraform apply
-```
+## 🚀 Démarrer le projet en local
+
+Prérequis : `Docker` et `docker-compose` installés sur votre machine.
+
+1.  Cloner le dépôt
+2.  Copier le fichier de variables d'environnement :
+    ```bash
+    cp .env.example .env
+    ```
+3.  Lancer l'infrastructure réseau complète :
+    ```bash
+    docker-compose up --build -d
+    ```
+
+L'application (qui intègre des *healthchecks* pour attendre l'initialisation de la DB) sera accessible sur `http://localhost:80`.

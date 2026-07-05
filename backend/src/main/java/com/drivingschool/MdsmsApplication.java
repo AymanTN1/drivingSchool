@@ -35,6 +35,7 @@ public class MdsmsApplication {
             FuelRecordRepository fuelRecordRepository,
             PaySlipRepository paySlipRepository,
             ProspectRepository prospectRepository,
+            SupportLessonRepository supportLessonRepository,
             PasswordEncoder passwordEncoder) {
 
         return args -> {
@@ -454,6 +455,104 @@ public class MdsmsApplication {
                 p4.setCreatedAt(LocalDate.now().minusDays(20));
                 p4.setLastContactDate(LocalDate.now().minusDays(15));
                 prospectRepository.save(p4);
+            }
+
+            // --- Support Lessons Seed Data ---
+            if (supportLessonRepository.count() == 0) {
+                List<User> candidateUsers = userRepository.findAll().stream()
+                        .filter(u -> u.getRole() == Role.CANDIDATE).toList();
+                List<User> moniteurUsers = userRepository.findAll().stream()
+                        .filter(u -> u.getRole() == Role.MONITEUR).toList();
+                List<Vehicle> allVehicles = vehicleRepository.findAll();
+
+                if (!candidateUsers.isEmpty() && !moniteurUsers.isEmpty()) {
+                    User cand1 = candidateUsers.get(0);
+                    User cand2 = candidateUsers.size() > 1 ? candidateUsers.get(1) : cand1;
+                    User mon1 = moniteurUsers.get(0);
+                    Vehicle veh1 = allVehicles.isEmpty() ? null : allVehicles.get(0);
+                    User assistant = userRepository.findByUsername("karima").orElse(mon1);
+
+                    // Completed lesson 1
+                    SupportLesson sl1 = new SupportLesson();
+                    sl1.setCandidate(cand1);
+                    sl1.setMoniteur(mon1);
+                    sl1.setVehicle(veh1);
+                    sl1.setSessionDate(LocalDateTime.now().minusDays(10).withHour(10));
+                    sl1.setDurationMinutes(90);
+                    sl1.setPricePerSession(200.0);
+                    sl1.setLessonType(SupportLessonType.PREPARATION_EXAMEN);
+                    sl1.setStatus(BookingStatus.COMPLETED);
+                    sl1.setPaid(true);
+                    sl1.setPerformanceRating(4);
+                    sl1.setMoniteurFeedback("Bon niveau de confiance, manoeuvres bien maitrisees.");
+                    sl1.setCreatedAt(LocalDateTime.now().minusDays(12));
+                    supportLessonRepository.save(sl1);
+
+                    // Completed lesson 2
+                    SupportLesson sl2 = new SupportLesson();
+                    sl2.setCandidate(cand2);
+                    sl2.setMoniteur(mon1);
+                    sl2.setVehicle(veh1);
+                    sl2.setSessionDate(LocalDateTime.now().minusDays(5).withHour(14));
+                    sl2.setDurationMinutes(60);
+                    sl2.setPricePerSession(150.0);
+                    sl2.setLessonType(SupportLessonType.CRENEAU_PARKING);
+                    sl2.setStatus(BookingStatus.COMPLETED);
+                    sl2.setPaid(true);
+                    sl2.setPerformanceRating(3);
+                    sl2.setMoniteurFeedback("Le creneau doit etre retravaille, problemes d'angles.");
+                    sl2.setCreatedAt(LocalDateTime.now().minusDays(7));
+                    supportLessonRepository.save(sl2);
+
+                    // Upcoming booked lesson
+                    SupportLesson sl3 = new SupportLesson();
+                    sl3.setCandidate(cand1);
+                    sl3.setMoniteur(mon1);
+                    sl3.setVehicle(veh1);
+                    sl3.setSessionDate(LocalDateTime.now().plusDays(2).withHour(9));
+                    sl3.setDurationMinutes(120);
+                    sl3.setPricePerSession(250.0);
+                    sl3.setLessonType(SupportLessonType.CONDUITE_AUTOROUTE);
+                    sl3.setStatus(BookingStatus.BOOKED);
+                    sl3.setPaid(true);
+                    sl3.setComments("Premiere experience autoroute, aller doucement.");
+                    sl3.setCreatedAt(LocalDateTime.now().minusDays(1));
+                    supportLessonRepository.save(sl3);
+
+                    // Post-failure remediation lesson
+                    SupportLesson sl4 = new SupportLesson();
+                    sl4.setCandidate(cand2);
+                    sl4.setMoniteur(mon1);
+                    sl4.setVehicle(veh1);
+                    sl4.setSessionDate(LocalDateTime.now().plusDays(5).withHour(16));
+                    sl4.setDurationMinutes(90);
+                    sl4.setPricePerSession(180.0);
+                    sl4.setLessonType(SupportLessonType.POST_ECHEC);
+                    sl4.setStatus(BookingStatus.BOOKED);
+                    sl4.setPaid(true);
+                    sl4.setComments("Echec a l'examen pratique, besoin de renforcement.");
+                    sl4.setCreatedAt(LocalDateTime.now());
+                    supportLessonRepository.save(sl4);
+
+                    // Record caisse transactions for paid support lessons
+                    CaisseTransaction st1 = new CaisseTransaction();
+                    st1.setAssistant(assistant);
+                    st1.setDate(LocalDateTime.now().minusDays(12));
+                    st1.setAmount(200.0);
+                    st1.setType(TransactionType.CASH);
+                    st1.setCandidate(cand1);
+                    st1.setDescription("Cours de soutien (PREPARATION EXAMEN) - " + cand1.getFullName());
+                    caisseTransactionRepository.save(st1);
+
+                    CaisseTransaction st2 = new CaisseTransaction();
+                    st2.setAssistant(assistant);
+                    st2.setDate(LocalDateTime.now().minusDays(7));
+                    st2.setAmount(150.0);
+                    st2.setType(TransactionType.CASH);
+                    st2.setCandidate(cand2);
+                    st2.setDescription("Cours de soutien (CRENEAU PARKING) - " + cand2.getFullName());
+                    caisseTransactionRepository.save(st2);
+                }
             }
         };
     }

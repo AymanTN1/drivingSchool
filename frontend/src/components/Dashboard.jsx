@@ -56,6 +56,12 @@ export default function Dashboard({ authData, onLogout }) {
   const [slotDatetime, setSlotDatetime] = useState('');
   const [slotDuration, setSlotDuration] = useState(60);
 
+  // Moniteur Feedback modal states
+  const [feedbackModalLesson, setFeedbackModalLesson] = useState(null); // lesson being rated
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackHover, setFeedbackHover] = useState(0);
+  const [feedbackText, setFeedbackText] = useState('');
+
   // Fetching context data based on Role
   useEffect(() => {
     // Set initial tab based on role
@@ -2117,49 +2123,253 @@ export default function Dashboard({ authData, onLogout }) {
 
         {/* 9. MONITEUR TAB: Mes Cours de Soutien */}
         {activeTab === 'moniteur-support' && (
-          <div className="card">
-            <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <BookOpen className="text-accent" /> Mes Séances de Soutien Assignées
-            </h3>
-            <div style={{ overflowX: 'auto' }}>
-              <table>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Candidat</th>
-                    <th>Type</th>
-                    <th>Durée</th>
-                    <th>Statut</th>
-                    <th>Commentaires</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {supportLessons.map(sl => (
-                    <tr key={sl.id}>
-                      <td>{new Date(sl.sessionDate).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
-                      <td><strong style={{ color: 'white' }}>{sl.candidate?.fullName}</strong></td>
-                      <td>
-                        <span className="badge" style={{ backgroundColor: 'rgba(139,92,246,0.2)', color: '#a78bfa', fontSize: '0.7rem' }}>
-                          {sl.lessonType?.replace(/_/g, ' ')}
-                        </span>
-                      </td>
-                      <td>{sl.durationMinutes} min</td>
-                      <td>
-                        <span className={`badge ${sl.status === 'COMPLETED' ? 'badge-success' : sl.status === 'CANCELLED' ? 'badge-danger' : 'badge-warning'}`}>
-                          {sl.status === 'COMPLETED' ? 'Terminée' : sl.status === 'CANCELLED' ? 'Annulée' : 'Réservée'}
-                        </span>
-                      </td>
-                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{sl.comments || '—'}</td>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+
+            {/* Feedback Modal Overlay */}
+            {feedbackModalLesson && (
+              <div style={{
+                position: 'fixed', inset: 0, zIndex: 9999,
+                backgroundColor: 'rgba(0,0,0,0.7)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                backdropFilter: 'blur(4px)'
+              }}>
+                <div style={{
+                  backgroundColor: '#1e293b', borderRadius: '16px', padding: '32px',
+                  width: '100%', maxWidth: '520px', border: '1px solid rgba(255,255,255,0.08)',
+                  boxShadow: '0 25px 50px rgba(0,0,0,0.5)'
+                }}>
+                  {/* Modal Header */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+                    <div>
+                      <h3 style={{ color: 'white', fontWeight: 'bold', fontSize: '1.15rem', margin: 0 }}>
+                        📝 Évaluation du Candidat
+                      </h3>
+                      <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '4px' }}>
+                        {feedbackModalLesson.candidate?.fullName} — {new Date(feedbackModalLesson.sessionDate).toLocaleDateString('fr-FR')}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => { setFeedbackModalLesson(null); setFeedbackRating(0); setFeedbackHover(0); setFeedbackText(''); }}
+                      style={{ color: 'var(--text-muted)', background: 'none', fontSize: '1.4rem', lineHeight: 1, padding: '4px 8px', borderRadius: '8px' }}
+                    >×</button>
+                  </div>
+
+                  {/* Star Rating */}
+                  <div style={{ marginBottom: '24px' }}>
+                    <label style={{ color: 'var(--text-muted)', fontSize: '0.85rem', display: 'block', marginBottom: '12px' }}>
+                      Note de performance du candidat
+                    </label>
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                      {[1, 2, 3, 4, 5].map(star => (
+                        <button
+                          key={star}
+                          type="button"
+                          onClick={() => setFeedbackRating(star)}
+                          onMouseEnter={() => setFeedbackHover(star)}
+                          onMouseLeave={() => setFeedbackHover(0)}
+                          style={{
+                            background: 'none', border: 'none', cursor: 'pointer',
+                            padding: '4px', borderRadius: '8px',
+                            transform: (feedbackHover || feedbackRating) >= star ? 'scale(1.25)' : 'scale(1)',
+                            transition: 'transform 0.15s ease',
+                          }}
+                          title={`${star} étoile${star > 1 ? 's' : ''}`}
+                        >
+                          <Star
+                            size={40}
+                            style={{
+                              color: (feedbackHover || feedbackRating) >= star ? '#f59e0b' : '#334155',
+                              fill: (feedbackHover || feedbackRating) >= star ? '#f59e0b' : 'none',
+                              transition: 'color 0.15s, fill 0.15s'
+                            }}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                    {feedbackRating > 0 && (
+                      <p style={{ textAlign: 'center', marginTop: '10px', fontSize: '0.9rem', color: '#f59e0b' }}>
+                        {feedbackRating === 1 ? '⚠️ Très insuffisant' :
+                         feedbackRating === 2 ? '📉 À améliorer' :
+                         feedbackRating === 3 ? '👍 Acceptable' :
+                         feedbackRating === 4 ? '✅ Bon niveau' :
+                         '🏆 Excellent — Prêt pour l\'examen !'}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Comment */}
+                  <div style={{ marginBottom: '24px' }}>
+                    <label style={{ color: 'var(--text-muted)', fontSize: '0.85rem', display: 'block', marginBottom: '8px' }}>
+                      Commentaire pédagogique
+                    </label>
+                    <textarea
+                      value={feedbackText}
+                      onChange={e => setFeedbackText(e.target.value)}
+                      rows={4}
+                      placeholder="Ex: Bonne maîtrise des virages, difficultés en créneau arrière — retravailler l'angle d'attaque..."
+                      style={{
+                        width: '100%', borderRadius: '10px', padding: '12px',
+                        backgroundColor: '#0f172a', border: '1px solid rgba(255,255,255,0.08)',
+                        color: 'white', fontSize: '0.9rem', resize: 'vertical', fontFamily: 'inherit'
+                      }}
+                    />
+                    <div style={{ textAlign: 'right', fontSize: '0.75rem', color: feedbackText.length > 400 ? '#f59e0b' : 'var(--text-muted)', marginTop: '4px' }}>
+                      {feedbackText.length}/500 caractères
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <div style={{ display: 'flex', gap: '12px' }}>
+                    <button
+                      onClick={() => {
+                        if (!feedbackRating) { triggerFeedback('danger', 'Veuillez sélectionner une note (1 à 5 étoiles).'); return; }
+                        if (!feedbackText.trim()) { triggerFeedback('danger', 'Le commentaire pédagogique est obligatoire.'); return; }
+                        if (feedbackText.length > 500) { triggerFeedback('danger', 'Le commentaire ne peut pas dépasser 500 caractères.'); return; }
+
+                        fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/moniteur/support-lessons/${feedbackModalLesson.id}/feedback`, {
+                          method: 'PUT',
+                          headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ performanceRating: feedbackRating, moniteurFeedback: feedbackText })
+                        })
+                          .then(async res => {
+                            const data = await res.json();
+                            if (!res.ok) throw new Error(data.message);
+                            triggerFeedback('success', data.message);
+                            setFeedbackModalLesson(null);
+                            setFeedbackRating(0);
+                            setFeedbackHover(0);
+                            setFeedbackText('');
+                            refreshData();
+                          })
+                          .catch(err => triggerFeedback('danger', err.message));
+                      }}
+                      className="btn btn-primary"
+                      style={{ flex: 1 }}
+                      disabled={!feedbackRating || !feedbackText.trim()}
+                    >
+                      <CheckCircle2 size={16} style={{ marginRight: '8px' }} />
+                      Enregistrer l'Évaluation
+                    </button>
+                    <button
+                      onClick={() => { setFeedbackModalLesson(null); setFeedbackRating(0); setFeedbackHover(0); setFeedbackText(''); }}
+                      className="btn btn-secondary"
+                      style={{ flex: 0 }}
+                    >Annuler</button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Stats Bar */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '12px' }}>
+              {[
+                { label: 'À venir', count: supportLessons.filter(s => s.status === 'BOOKED').length, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+                { label: 'Terminées', count: supportLessons.filter(s => s.status === 'COMPLETED').length, color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+                { label: 'En attente de feedback', count: supportLessons.filter(s => s.status === 'COMPLETED' && !s.performanceRating).length, color: '#f97316', bg: 'rgba(249,115,22,0.1)' },
+                { label: 'Note moy.', count: supportLessons.filter(s => s.performanceRating).length > 0
+                    ? (supportLessons.filter(s => s.performanceRating).reduce((sum, s) => sum + s.performanceRating, 0) / supportLessons.filter(s => s.performanceRating).length).toFixed(1) + ' ⭐'
+                    : '—', color: '#a78bfa', bg: 'rgba(139,92,246,0.1)' },
+              ].map((stat, i) => (
+                <div key={i} style={{ padding: '14px 16px', borderRadius: '10px', background: stat.bg, border: `1px solid ${stat.color}30`, textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.6rem', fontWeight: 'bold', color: stat.color }}>{stat.count}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>{stat.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Main Table */}
+            <div className="card" style={{ overflow: 'hidden' }}>
+              <h3 style={{ fontSize: '1.15rem', fontWeight: 'bold', color: 'white', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <BookOpen className="text-accent" size={18} /> Mes Séances de Soutien Assignées
+              </h3>
+              <div style={{ overflowX: 'auto' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date & Heure</th>
+                      <th>Candidat</th>
+                      <th>Type</th>
+                      <th>Durée</th>
+                      <th>Statut</th>
+                      <th>Évaluation</th>
+                      <th>Action Feedback</th>
                     </tr>
-                  ))}
-                  {supportLessons.length === 0 && (
-                    <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '30px' }}>Aucune séance de soutien assignée.</td></tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {supportLessons.map(sl => (
+                      <tr key={sl.id} style={{ borderLeft: sl.status === 'COMPLETED' && !sl.performanceRating ? '3px solid #f97316' : 'none' }}>
+                        <td>{new Date(sl.sessionDate).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                        <td><strong style={{ color: 'white' }}>{sl.candidate?.fullName}</strong></td>
+                        <td>
+                          <span className="badge" style={{ backgroundColor: 'rgba(139,92,246,0.2)', color: '#a78bfa', fontSize: '0.7rem' }}>
+                            {sl.lessonType?.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td>{sl.durationMinutes} min</td>
+                        <td>
+                          <span className={`badge ${sl.status === 'COMPLETED' ? 'badge-success' : sl.status === 'CANCELLED' ? 'badge-danger' : 'badge-warning'}`}>
+                            {sl.status === 'COMPLETED' ? 'Terminée' : sl.status === 'CANCELLED' ? 'Annulée' : 'Réservée'}
+                          </span>
+                        </td>
+                        <td>
+                          {sl.performanceRating ? (
+                            <div>
+                              <div style={{ display: 'flex', gap: '2px', marginBottom: '4px' }}>
+                                {[1,2,3,4,5].map(s => (
+                                  <Star key={s} size={14} style={{ color: s <= sl.performanceRating ? '#f59e0b' : '#334155', fill: s <= sl.performanceRating ? '#f59e0b' : 'none' }} />
+                                ))}
+                                <span style={{ fontSize: '0.75rem', color: '#f59e0b', marginLeft: '4px' }}>{sl.performanceRating}/5</span>
+                              </div>
+                              {sl.moniteurFeedback && (
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={sl.moniteurFeedback}>
+                                  {sl.moniteurFeedback}
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <span style={{ color: sl.status === 'COMPLETED' ? '#f97316' : 'var(--text-muted)', fontSize: '0.8rem' }}>
+                              {sl.status === 'COMPLETED' ? '⚠️ En attente' : '—'}
+                            </span>
+                          )}
+                        </td>
+                        <td>
+                          {sl.status === 'COMPLETED' && (
+                            <button
+                              onClick={() => {
+                                setFeedbackModalLesson(sl);
+                                setFeedbackRating(sl.performanceRating || 0);
+                                setFeedbackText(sl.moniteurFeedback || '');
+                              }}
+                              className="btn btn-secondary"
+                              style={{
+                                padding: '6px 14px', fontSize: '0.8rem',
+                                backgroundColor: sl.performanceRating ? 'rgba(139,92,246,0.15)' : 'rgba(249,115,22,0.15)',
+                                color: sl.performanceRating ? '#a78bfa' : '#f97316',
+                                border: `1px solid ${sl.performanceRating ? 'rgba(139,92,246,0.3)' : 'rgba(249,115,22,0.3)'}`,
+                                display: 'flex', alignItems: 'center', gap: '6px'
+                              }}
+                              title={sl.performanceRating ? 'Modifier l\'évaluation' : 'Soumettre une évaluation'}
+                            >
+                              <Star size={13} />
+                              {sl.performanceRating ? 'Modifier' : 'Évaluer'}
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                    {supportLessons.length === 0 && (
+                      <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>
+                        <BookOpen size={32} style={{ color: 'var(--text-muted)', display: 'block', margin: '0 auto 12px auto' }} />
+                        Aucune séance de soutien assignée pour le moment.
+                      </td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
+
 
         {/* 10. CANDIDATE TAB: Mes Cours de Soutien */}
         {activeTab === 'candidate-support' && (

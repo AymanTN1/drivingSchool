@@ -346,6 +346,55 @@ public class DashboardController {
         return ResponseEntity.ok(supportLessonRepository.findByMoniteurId(moniteur.getId()));
     }
 
+    // Moniteur: submit performance feedback for a completed lesson
+    @PreAuthorize("hasRole('MONITEUR')")
+    @PutMapping("/moniteur/support-lessons/{id}/feedback")
+    public ResponseEntity<?> submitMoniteurFeedback(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            Principal principal) {
+
+        User moniteur = userRepository.findByUsername(principal.getName()).orElseThrow();
+
+        SupportLesson lesson = supportLessonRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Séance introuvable"));
+
+        // Security: moniteur can only submit feedback for their OWN lessons
+        if (!lesson.getMoniteur().getId().equals(moniteur.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Vous ne pouvez soumettre un feedback que pour vos propres séances.");
+        }
+
+        // Lesson must be COMPLETED to accept feedback
+        if (lesson.getStatus() != BookingStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Le feedback n'est possible que pour les séances terminées. Statut actuel : " + lesson.getStatus());
+        }
+
+        // Extract and validate rating (1-5)
+        if (body.containsKey("performanceRating")) {
+            int rating = ((Number) body.get("performanceRating")).intValue();
+            if (rating < 1 || rating > 5) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La note doit être entre 1 et 5.");
+            }
+            lesson.setPerformanceRating(rating);
+        }
+
+        if (body.containsKey("moniteurFeedback")) {
+            String feedback = (String) body.get("moniteurFeedback");
+            if (feedback != null && !feedback.isBlank()) {
+                lesson.setMoniteurFeedback(feedback.trim());
+            }
+        }
+
+        supportLessonRepository.save(lesson);
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Évaluation enregistrée avec succès !",
+                "rating", lesson.getPerformanceRating(),
+                "feedback", lesson.getMoniteurFeedback() != null ? lesson.getMoniteurFeedback() : ""
+        ));
+    }
+
     // Candidate: see their booked/completed support lessons
     @PreAuthorize("hasRole('CANDIDATE')")
     @GetMapping("/candidate/support-lessons")

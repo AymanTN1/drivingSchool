@@ -47,6 +47,9 @@ public class DashboardController {
     @Autowired
     SupportLessonRepository supportLessonRepository;
 
+    @Autowired
+    DrivingLessonSlotRepository drivingLessonSlotRepository;
+
     // --- ADMIN: Staff management ---
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -180,11 +183,29 @@ public class DashboardController {
 
         LocalDateTime sessionDt = LocalDateTime.parse(request.getSessionDate());
         LocalDateTime sessionEnd = sessionDt.plusMinutes(request.getDurationMinutes());
+        // Buffer de 30 minutes avant et après pour éviter les chevauchements de trajets
+        LocalDateTime windowStart = sessionDt.minusMinutes(30);
+        LocalDateTime windowEnd = sessionEnd;
 
-        // Conflict detection: check if moniteur is already booked during this time slot
-        var conflicts = supportLessonRepository.findConflictsForMoniteur(moniteur.getId(), sessionDt.minusMinutes(30), sessionEnd);
-        if (!conflicts.isEmpty()) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "CONFLIT: Le moniteur " + moniteur.getFullName() + " a déjà une séance prévue à ce créneau horaire.");
+        // 1. Conflit sur une séance de SOUTIEN existante
+        var supportConflicts = supportLessonRepository.findConflictsForMoniteur(moniteur.getId(), windowStart, windowEnd);
+        if (!supportConflicts.isEmpty()) {
+            SupportLesson conflicting = supportConflicts.get(0);
+            String conflictTime = conflicting.getSessionDate().toLocalTime().toString().substring(0, 5);
+            String conflictDuration = conflicting.getDurationMinutes() + " min";
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "CONFLIT HORAIRE: " + moniteur.getFullName() + " a déjà un cours de soutien le " +
+                    conflicting.getSessionDate().toLocalDate() + " à " + conflictTime + " (" + conflictDuration + ").");
+        }
+
+        // 2. Conflit sur une LEÇON DE CONDUITE normale
+        var drivingConflicts = drivingLessonSlotRepository.findMoniteurLessonsInPeriod(moniteur.getId(), windowStart, windowEnd);
+        if (!drivingConflicts.isEmpty()) {
+            DrivingLessonSlot conflicting = drivingConflicts.get(0);
+            String conflictTime = conflicting.getSlotDateTime().toLocalTime().toString().substring(0, 5);
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "CONFLIT HORAIRE: " + moniteur.getFullName() + " a déjà une leçon de conduite le " +
+                    conflicting.getSlotDateTime().toLocalDate() + " à " + conflictTime + ". Choisissez un autre moniteur ou un autre créneau.");
         }
 
         SupportLesson lesson = new SupportLesson();
@@ -217,6 +238,41 @@ public class DashboardController {
         caisseTransactionRepository.save(transaction);
 
         return ResponseEntity.ok(Map.of("message", "Séance de soutien planifiée et encaissée avec succès !"));
+    }
+
+    // Endpoint: check which moniteurs are available for a given date/time + duration
+    @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")
+    @GetMapping("/assistant/support-lessons/availability")
+    public ResponseEntity<?> getMoniteursAvailability(
+            @org.springframework.web.bind.annotation.RequestParam String sessionDate,
+            @org.springframework.web.bind.annotation.RequestParam Integer durationMinutes) {
+
+        LocalDateTime sessionDt = LocalDateTime.parse(sessionDate);
+        LocalDateTime windowStart = sessionDt.minusMinutes(30);
+        LocalDateTime windowEnd = sessionDt.plusMinutes(durationMinutes);
+
+        // Get all moniteurs
+        List<User> allMoniteurs = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == com.drivingschool.model.Role.MONITEUR && u.isActive())
+                .toList();
+
+        List<Map<String, Object>> availability = new java.util.ArrayList<>();
+        for (User m : allMoniteurs) {
+            boolean hasSupportConflict = !supportLessonRepository
+                    .findConflictsForMoniteur(m.getId(), windowStart, windowEnd).isEmpty();
+            boolean hasDrivingConflict = !drivingLessonSlotRepository
+                    .findMoniteurLessonsInPeriod(m.getId(), windowStart, windowEnd).isEmpty();
+            boolean available = !hasSupportConflict && !hasDrivingConflict;
+
+            Map<String, Object> entry = new HashMap<>();
+            entry.put("id", m.getId());
+            entry.put("fullName", m.getFullName());
+            entry.put("available", available);
+            entry.put("conflictReason", hasSupportConflict ? "Cours de soutien" : (hasDrivingConflict ? "Leçon de conduite" : null));
+            availability.add(entry);
+        }
+
+        return ResponseEntity.ok(availability);
     }
 
     @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")

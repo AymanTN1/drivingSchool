@@ -50,6 +50,11 @@ export default function Dashboard({ authData, onLogout }) {
   // Cours de Soutien states
   const [supportLessons, setSupportLessons] = useState([]);
   const [supportStats, setSupportStats] = useState(null);
+  const [moniteurAvailability, setMoniteurAvailability] = useState([]); // Live availability check
+  const [availabilityChecking, setAvailabilityChecking] = useState(false);
+  // Form field states for availability check
+  const [slotDatetime, setSlotDatetime] = useState('');
+  const [slotDuration, setSlotDuration] = useState(60);
 
   // Fetching context data based on Role
   useEffect(() => {
@@ -206,9 +211,24 @@ export default function Dashboard({ authData, onLogout }) {
         if (!res.ok) throw new Error(resData.message || 'Erreur');
         triggerFeedback('success', resData.message);
         e.target.reset();
+        setSlotDatetime('');
+        setMoniteurAvailability([]);
         refreshData();
       })
       .catch(err => triggerFeedback('danger', err.message));
+  };
+
+  // Check moniteur availability for a given slot
+  const checkMoniteurAvailability = (datetime, duration) => {
+    if (!datetime || !duration) return;
+    setAvailabilityChecking(true);
+    fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/support-lessons/availability?sessionDate=${encodeURIComponent(datetime)}&durationMinutes=${duration}`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => setMoniteurAvailability(data))
+      .catch(err => console.log('Availability check error', err))
+      .finally(() => setAvailabilityChecking(false));
   };
 
   // ADMIN Action: Create Staff User
@@ -1894,13 +1914,37 @@ export default function Dashboard({ authData, onLogout }) {
                     </select>
                   </div>
                   <div className="form-group">
-                    <label>Moniteur Assigné</label>
+                    <label>Moniteur Assigné
+                      {availabilityChecking && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '8px' }}>⏳ Vérification...</span>}
+                      {!availabilityChecking && moniteurAvailability.length > 0 && !slotDatetime && <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '8px' }}>— Choisissez une date d'abord</span>}
+                    </label>
                     <select name="moniteurId" className="form-control" required>
                       <option value="">-- Sélectionner --</option>
-                      {moniteurs.map(m => (
-                        <option key={m.id} value={m.id}>{m.fullName}</option>
-                      ))}
+                      {moniteurAvailability.length > 0
+                        ? moniteurAvailability.map(m => (
+                          <option
+                            key={m.id}
+                            value={m.id}
+                            disabled={!m.available}
+                            style={{ color: m.available ? 'white' : '#6b7280', backgroundColor: m.available ? '#1e293b' : '#0f172a' }}
+                          >
+                            {m.available ? '✅' : '🚫'} {m.fullName}
+                            {!m.available && m.conflictReason ? ` — Occupé (${m.conflictReason})` : ''}
+                          </option>
+                        ))
+                        : moniteurs.map(m => (
+                          <option key={m.id} value={m.id}>
+                            {m.fullName} {slotDatetime ? '' : '— (sélectionner une date pour vérifier disponibilité)'}
+                          </option>
+                        ))
+                      }
                     </select>
+                    {moniteurAvailability.length > 0 && (
+                      <div style={{ marginTop: '6px', display: 'flex', gap: '12px', fontSize: '0.75rem' }}>
+                        <span style={{ color: '#22c55e' }}>✅ {moniteurAvailability.filter(m => m.available).length} disponible(s)</span>
+                        <span style={{ color: '#ef4444' }}>🚫 {moniteurAvailability.filter(m => !m.available).length} occupé(s)</span>
+                      </div>
+                    )}
                   </div>
                   <div className="form-group">
                     <label>Véhicule (Optionnel)</label>
@@ -1917,19 +1961,39 @@ export default function Dashboard({ authData, onLogout }) {
                       <option value="PERFECTIONNEMENT">Perfectionnement Général</option>
                       <option value="PREPARATION_EXAMEN">Préparation Examen</option>
                       <option value="POST_ECHEC">Remise à Niveau Post-Échec</option>
-                      <option value="CRENEAU_PARKING">Créneau & Stationnement</option>
+                      <option value="CRENEAU_PARKING">Créneau &amp; Stationnement</option>
                       <option value="CONDUITE_AUTOROUTE">Conduite Autoroute</option>
                       <option value="CONDUITE_NUIT">Conduite de Nuit</option>
                     </select>
                   </div>
                   <div className="grid-2">
                     <div className="form-group">
-                      <label>Date & Heure</label>
-                      <input type="datetime-local" name="sessionDate" className="form-control" required />
+                      <label>Date &amp; Heure</label>
+                      <input
+                        type="datetime-local"
+                        name="sessionDate"
+                        className="form-control"
+                        required
+                        value={slotDatetime}
+                        onChange={e => {
+                          setSlotDatetime(e.target.value);
+                          setMoniteurAvailability([]);
+                          if (e.target.value) checkMoniteurAvailability(e.target.value, slotDuration);
+                        }}
+                      />
                     </div>
                     <div className="form-group">
                       <label>Durée</label>
-                      <select name="durationMinutes" className="form-control" required>
+                      <select
+                        name="durationMinutes"
+                        className="form-control"
+                        required
+                        value={slotDuration}
+                        onChange={e => {
+                          setSlotDuration(parseInt(e.target.value));
+                          if (slotDatetime) checkMoniteurAvailability(slotDatetime, parseInt(e.target.value));
+                        }}
+                      >
                         <option value="60">1 heure (60 min)</option>
                         <option value="90">1h30 (90 min)</option>
                         <option value="120">2 heures (120 min)</option>

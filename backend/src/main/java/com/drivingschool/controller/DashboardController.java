@@ -1,6 +1,7 @@
 package com.drivingschool.controller;
 
 import com.drivingschool.dto.CaisseTransactionRequest;
+import com.drivingschool.dto.SupportLessonRequest;
 import com.drivingschool.model.*;
 import com.drivingschool.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -42,6 +43,9 @@ public class DashboardController {
 
     @Autowired
     PasswordEncoder passwordEncoder;
+
+    @Autowired
+    SupportLessonRepository supportLessonRepository;
 
     // --- ADMIN: Staff management ---
 
@@ -160,6 +164,138 @@ public class DashboardController {
     @GetMapping("/assistant/caisse")
     public ResponseEntity<?> getTransactions() {
         return ResponseEntity.ok(caisseTransactionRepository.findAll());
+    }
+
+    // --- ASSISTANT / ADMIN: Cours de Soutien ---
+
+    @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")
+    @PostMapping("/assistant/support-lessons")
+    @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "analytics", allEntries = true)
+    public ResponseEntity<?> createSupportLesson(@RequestBody SupportLessonRequest request, Principal principal) {
+        User candidate = userRepository.findById(request.getCandidateId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Candidat introuvable"));
+        User moniteur = userRepository.findById(request.getMoniteurId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Moniteur introuvable"));
+
+        LocalDateTime sessionDt = LocalDateTime.parse(request.getSessionDate());
+        LocalDateTime sessionEnd = sessionDt.plusMinutes(request.getDurationMinutes());
+
+        // Conflict detection: check if moniteur is already booked during this time slot
+        var conflicts = supportLessonRepository.findConflictsForMoniteur(moniteur.getId(), sessionDt.minusMinutes(30), sessionEnd);
+        if (!conflicts.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "CONFLIT: Le moniteur " + moniteur.getFullName() + " a déjà une séance prévue à ce créneau horaire.");
+        }
+
+        SupportLesson lesson = new SupportLesson();
+        lesson.setCandidate(candidate);
+        lesson.setMoniteur(moniteur);
+        lesson.setSessionDate(sessionDt);
+        lesson.setDurationMinutes(request.getDurationMinutes());
+        lesson.setPricePerSession(request.getPricePerSession());
+        lesson.setLessonType(SupportLessonType.valueOf(request.getLessonType()));
+        lesson.setComments(request.getComments());
+        lesson.setStatus(BookingStatus.BOOKED);
+        lesson.setPaid(true);
+        lesson.setCreatedAt(LocalDateTime.now());
+
+        if (request.getVehicleId() != null) {
+            vehicleRepository.findById(request.getVehicleId()).ifPresent(lesson::setVehicle);
+        }
+
+        supportLessonRepository.save(lesson);
+
+        // Auto-register in Caisse as revenue
+        User assistant = userRepository.findByUsername(principal.getName()).orElseThrow();
+        CaisseTransaction transaction = new CaisseTransaction();
+        transaction.setAssistant(assistant);
+        transaction.setDate(LocalDateTime.now());
+        transaction.setAmount(request.getPricePerSession());
+        transaction.setType(TransactionType.CASH);
+        transaction.setCandidate(candidate);
+        transaction.setDescription("Cours de soutien (" + request.getLessonType().replace("_", " ") + ") - " + candidate.getFullName());
+        caisseTransactionRepository.save(transaction);
+
+        return ResponseEntity.ok(Map.of("message", "Séance de soutien planifiée et encaissée avec succès !"));
+    }
+
+    @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")
+    @GetMapping("/assistant/support-lessons")
+    public ResponseEntity<?> getSupportLessons() {
+        return ResponseEntity.ok(supportLessonRepository.findAll());
+    }
+
+    @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")
+    @PutMapping("/assistant/support-lessons/{id}/complete")
+    @org.springframework.cache.annotation.CacheEvict(value = "analytics", allEntries = true)
+    public ResponseEntity<?> completeSupportLesson(@PathVariable Long id, @RequestBody(required = false) Map<String, Object> body) {
+        SupportLesson lesson = supportLessonRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Séance introuvable"));
+
+        if (lesson.getStatus() == BookingStatus.CANCELLED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Impossible de terminer une séance annulée.");
+        }
+
+        lesson.setStatus(BookingStatus.COMPLETED);
+
+        if (body != null) {
+            if (body.containsKey("moniteurFeedback")) {
+                lesson.setMoniteurFeedback((String) body.get("moniteurFeedback"));
+            }
+            if (body.containsKey("performanceRating")) {
+                lesson.setPerformanceRating((Integer) body.get("performanceRating"));
+            }
+        }
+
+        supportLessonRepository.save(lesson);
+        return ResponseEntity.ok(Map.of("message", "Séance de soutien marquée comme terminée !"));
+    }
+
+    @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")
+    @PutMapping("/assistant/support-lessons/{id}/cancel")
+    @Transactional
+    @org.springframework.cache.annotation.CacheEvict(value = "analytics", allEntries = true)
+    public ResponseEntity<?> cancelSupportLesson(@PathVariable Long id) {
+        SupportLesson lesson = supportLessonRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Séance introuvable"));
+
+        if (lesson.getStatus() == BookingStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Impossible d'annuler une séance déjà terminée.");
+        }
+
+        lesson.setStatus(BookingStatus.CANCELLED);
+        lesson.setPaid(false);
+        supportLessonRepository.save(lesson);
+        return ResponseEntity.ok(Map.of("message", "Séance annulée avec succès."));
+    }
+
+    @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")
+    @GetMapping("/assistant/support-lessons/stats")
+    public ResponseEntity<?> getSupportLessonStats() {
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("totalBooked", supportLessonRepository.countByStatus(BookingStatus.BOOKED));
+        stats.put("totalCompleted", supportLessonRepository.countByStatus(BookingStatus.COMPLETED));
+        stats.put("totalCancelled", supportLessonRepository.countByStatus(BookingStatus.CANCELLED));
+        stats.put("totalRevenue", supportLessonRepository.sumCompletedRevenue());
+        stats.put("totalHoursDelivered", supportLessonRepository.sumCompletedDurationMinutes() / 60.0);
+        stats.put("totalLessons", supportLessonRepository.count());
+        return ResponseEntity.ok(stats);
+    }
+
+    // Moniteur: see their assigned support lessons
+    @PreAuthorize("hasRole('MONITEUR')")
+    @GetMapping("/moniteur/support-lessons")
+    public ResponseEntity<?> getMoniteurSupportLessons(Principal principal) {
+        User moniteur = userRepository.findByUsername(principal.getName()).orElseThrow();
+        return ResponseEntity.ok(supportLessonRepository.findByMoniteurId(moniteur.getId()));
+    }
+
+    // Candidate: see their booked/completed support lessons
+    @PreAuthorize("hasRole('CANDIDATE')")
+    @GetMapping("/candidate/support-lessons")
+    public ResponseEntity<?> getCandidateSupportLessons(Principal principal) {
+        User candidate = userRepository.findByUsername(principal.getName()).orElseThrow();
+        return ResponseEntity.ok(supportLessonRepository.findByCandidateId(candidate.getId()));
     }
 
     // --- ASSISTANT / ADMIN: Alerts Engine ---
@@ -297,10 +433,12 @@ public class DashboardController {
         // 3. Finances trends (Recettes vs Reliquats cumulés)
         double totalRevenueCollected = caisseTransactionRepository.sumAllAmounts();
         double totalBalanceOutstanding = candidateProfileRepository.sumOutstandingBalances();
+        double supportLessonRevenue = supportLessonRepository.sumCompletedRevenue();
 
         data.put("financesOverview", Map.of(
                 "recettes", totalRevenueCollected,
-                "reliquats", totalBalanceOutstanding
+                "reliquats", totalBalanceOutstanding,
+                "supportRevenue", supportLessonRevenue
         ));
 
         // 4. Monthly financials details
@@ -326,7 +464,8 @@ public class DashboardController {
         data.put("kpi", Map.of(
                 "totalCandidates", candidateProfileRepository.count(),
                 "totalMoniteurs", moniteurProfileRepository.count(),
-                "totalVehicles", vehicleRepository.count()
+                "totalVehicles", vehicleRepository.count(),
+                "totalSupportLessons", supportLessonRepository.count()
         ));
 
         return ResponseEntity.ok(data);

@@ -63,5 +63,12 @@ public class SupportLesson {
     // Rating of candidate performance during this session (1-5)
     private Integer performanceRating;
 
+    // Candidate rates the moniteur after the session (1-5) — visible only to ADMIN
+    private Integer candidateRating;
+
+    // Candidate's comment about the moniteur (optional)
+    @Lob
+    private String candidateComment;
+
     private LocalDateTime createdAt = LocalDateTime.now();
 }

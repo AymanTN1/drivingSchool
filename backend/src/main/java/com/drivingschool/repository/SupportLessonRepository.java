@@ -42,4 +42,15 @@ public interface SupportLessonRepository extends JpaRepository<SupportLesson, Lo
 
     @Query("SELECT COUNT(s) FROM SupportLesson s WHERE s.candidate.id = :candidateId AND s.status = com.drivingschool.model.BookingStatus.COMPLETED")
     long countCompletedByCandidateId(Long candidateId);
+
+    // Candidate rating stats per moniteur (for admin analytics)
+    @Query("SELECT AVG(s.candidateRating) FROM SupportLesson s WHERE s.moniteur.id = :moniteurId AND s.candidateRating IS NOT NULL")
+    Double avgCandidateRatingByMoniteur(Long moniteurId);
+
+    @Query("SELECT COUNT(s) FROM SupportLesson s WHERE s.moniteur.id = :moniteurId AND s.candidateRating IS NOT NULL")
+    Long countCandidateRatingsByMoniteur(Long moniteurId);
+
+    // All rated sessions (for admin global view)
+    @Query("SELECT s FROM SupportLesson s WHERE s.candidateRating IS NOT NULL ORDER BY s.sessionDate DESC")
+    List<SupportLesson> findAllRatedByCandidate();
 }

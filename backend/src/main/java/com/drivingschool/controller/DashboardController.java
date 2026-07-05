@@ -403,6 +403,104 @@ public class DashboardController {
         return ResponseEntity.ok(supportLessonRepository.findByCandidateId(candidate.getId()));
     }
 
+    // Candidate: rate their moniteur after a completed session
+    @PreAuthorize("hasRole('CANDIDATE')")
+    @PutMapping("/candidate/support-lessons/{id}/rate")
+    public ResponseEntity<?> submitCandidateRating(
+            @PathVariable Long id,
+            @RequestBody Map<String, Object> body,
+            Principal principal) {
+
+        User candidate = userRepository.findByUsername(principal.getName()).orElseThrow();
+
+        SupportLesson lesson = supportLessonRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Séance introuvable"));
+
+        // Security: candidate can only rate their OWN sessions
+        if (!lesson.getCandidate().getId().equals(candidate.getId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Vous ne pouvez noter que vos propres séances.");
+        }
+
+        if (lesson.getStatus() != BookingStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Vous ne pouvez évaluer qu'une séance terminée.");
+        }
+
+        // Extract and validate rating
+        if (!body.containsKey("candidateRating")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La note est obligatoire.");
+        }
+        int rating = ((Number) body.get("candidateRating")).intValue();
+        if (rating < 1 || rating > 5) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "La note doit être entre 1 et 5.");
+        }
+        lesson.setCandidateRating(rating);
+
+        if (body.containsKey("candidateComment")) {
+            String comment = (String) body.get("candidateComment");
+            if (comment != null && !comment.isBlank()) {
+                lesson.setCandidateComment(comment.trim());
+            }
+        }
+
+        supportLessonRepository.save(lesson);
+
+        return ResponseEntity.ok(Map.of("message", "Merci pour votre évaluation !"));
+    }
+
+    // ADMIN ONLY: moniteur ratings report (candidate ratings of their moniteurs)
+    @PreAuthorize("hasRole('ADMIN')")
+    @GetMapping("/admin/moniteurs/ratings-report")
+    public ResponseEntity<?> getMoniteurRatingsReport() {
+        List<User> moniteurs = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == com.drivingschool.model.Role.MONITEUR && u.isActive())
+                .toList();
+
+        List<Map<String, Object>> report = new java.util.ArrayList<>();
+        for (User m : moniteurs) {
+            Double avgRating = supportLessonRepository.avgCandidateRatingByMoniteur(m.getId());
+            Long ratingCount = supportLessonRepository.countCandidateRatingsByMoniteur(m.getId());
+            long totalSessions = supportLessonRepository.findByMoniteurId(m.getId()).size();
+
+            Map<String, Object> entry = new HashMap<>();
+            entry.put("moniteurId", m.getId());
+            entry.put("moniteurName", m.getFullName());
+            entry.put("totalSupportSessions", totalSessions);
+            entry.put("totalRatings", ratingCount != null ? ratingCount : 0);
+            entry.put("averageRating", avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null);
+            report.add(entry);
+        }
+
+        // Sort by avg rating descending (best first)
+        report.sort((a, b) -> {
+            Double ra = (Double) a.get("averageRating");
+            Double rb = (Double) b.get("averageRating");
+            if (ra == null && rb == null) return 0;
+            if (ra == null) return 1;
+            if (rb == null) return -1;
+            return Double.compare(rb, ra);
+        });
+
+        // Also include the most recent reviews (with comments)
+        List<SupportLesson> recentReviews = supportLessonRepository.findAllRatedByCandidate();
+        List<Map<String, Object>> reviews = recentReviews.stream().limit(20).map(sl -> {
+            Map<String, Object> r = new HashMap<>();
+            r.put("id", sl.getId());
+            r.put("sessionDate", sl.getSessionDate());
+            r.put("candidateName", sl.getCandidate().getFullName());
+            r.put("moniteurName", sl.getMoniteur().getFullName());
+            r.put("candidateRating", sl.getCandidateRating());
+            r.put("candidateComment", sl.getCandidateComment());
+            r.put("lessonType", sl.getLessonType());
+            return r;
+        }).toList();
+
+        return ResponseEntity.ok(Map.of(
+                "moniteurRankings", report,
+                "recentReviews", reviews
+        ));
+    }
+
     // --- ASSISTANT / ADMIN: Alerts Engine ---
 
     @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")

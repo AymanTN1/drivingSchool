@@ -48,6 +48,9 @@ public class BookingController {
     NarsaQuotaRepository narsaQuotaRepository;
 
     @Autowired
+    SupportLessonRepository supportLessonRepository;
+
+    @Autowired
     PasswordEncoder passwordEncoder;
 
     // --- ASSISTANT: Enroll Candidate ---
@@ -193,6 +196,74 @@ public class BookingController {
                 "occupiedCount", occupiedPosts.size(),
                 "freeCount", totalPosts - occupiedPosts.size(),
                 "posts", postsStatusList
+        ));
+    }
+
+    // --- PUBLIC: Moniteur ratings for landing page ---
+    @GetMapping("/public/moniteurs-ratings")
+    public ResponseEntity<?> getPublicMoniteursRatings() {
+        List<User> moniteurs = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == Role.MONITEUR && u.isActive())
+                .toList();
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (User m : moniteurs) {
+            Double avg = supportLessonRepository.avgCandidateRatingByMoniteur(m.getId());
+            Long count = supportLessonRepository.countCandidateRatingsByMoniteur(m.getId());
+            long totalSessions = supportLessonRepository.findByMoniteurId(m.getId()).size();
+
+            if (avg == null) continue; // only show moniteurs who have been rated
+
+            Map<String, Object> entry = new HashMap<>();
+            entry.put("name", m.getFullName());
+            entry.put("averageRating", Math.round(avg * 10.0) / 10.0);
+            entry.put("totalRatings", count != null ? count : 0);
+            entry.put("totalSessions", totalSessions);
+            result.add(entry);
+        }
+
+        // Sort best first
+        result.sort((a, b) -> Double.compare(
+                ((Double) b.get("averageRating")),
+                ((Double) a.get("averageRating"))
+        ));
+
+        // Also include latest reviews with comments (anonymized by first name only)
+        List<Map<String, Object>> recentReviews = supportLessonRepository.findAllRatedByCandidate()
+                .stream()
+                .filter(sl -> sl.getCandidateComment() != null && !sl.getCandidateComment().isBlank())
+                .limit(6)
+                .map(sl -> {
+                    String firstName = sl.getCandidate().getFullName().split(" ")[0]; // first name only for privacy
+                    Map<String, Object> r = new HashMap<>();
+                    r.put("candidateFirstName", firstName);
+                    r.put("moniteurName", sl.getMoniteur().getFullName());
+                    r.put("rating", sl.getCandidateRating());
+                    r.put("comment", sl.getCandidateComment());
+                    r.put("lessonType", sl.getLessonType() != null ? sl.getLessonType().toString().replace("_", " ") : "");
+                    return r;
+                }).toList();
+
+        // Global school stats
+        long totalRatingsAll = supportLessonRepository.findAllRatedByCandidate().size();
+        double overallAvg = totalRatingsAll > 0
+                ? supportLessonRepository.findAllRatedByCandidate().stream()
+                    .mapToInt(sl -> sl.getCandidateRating() != null ? sl.getCandidateRating() : 0)
+                    .average().orElse(0)
+                : 0;
+
+        return ResponseEntity.ok(Map.of(
+                "moniteurs", result,
+                "recentReviews", recentReviews,
+                "globalStats", Map.of(
+                        "totalRatings", totalRatingsAll,
+                        "overallAverage", Math.round(overallAvg * 10.0) / 10.0,
+                        "satisfactionPct", totalRatingsAll > 0
+                                ? (supportLessonRepository.findAllRatedByCandidate().stream()
+                                    .filter(sl -> sl.getCandidateRating() != null && sl.getCandidateRating() >= 4)
+                                    .count() * 100 / totalRatingsAll)
+                                : 0
+                )
         ));
     }
 

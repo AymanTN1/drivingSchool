@@ -6,7 +6,7 @@ import {
   UserPlus, Car, DollarSign, Calendar, AlertCircle, FileText, CheckCircle2, Star,
   TrendingUp, Users, Shield, LogOut, CheckSquare, PlusCircle, Printer, X, ShieldAlert,
   Fuel, Gauge, AlertTriangle, Activity, Banknote, Clock, Award, Phone, ArrowRight,
-  ClipboardList, Scan, QrCode, Monitor, CalendarDays
+  ClipboardList, Scan, QrCode, Monitor, CalendarDays, Edit2, BookOpen, XCircle
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
@@ -46,6 +46,10 @@ export default function Dashboard({ authData, onLogout }) {
   const [qrModalOpen, setQrModalOpen] = useState(false);
   const [selectedLessonQr, setSelectedLessonQr] = useState(null);
   const [pinInput, setPinInput] = useState('');
+
+  // Cours de Soutien states
+  const [supportLessons, setSupportLessons] = useState([]);
+  const [supportStats, setSupportStats] = useState(null);
 
   // Fetching context data based on Role
   useEffect(() => {
@@ -123,6 +127,17 @@ export default function Dashboard({ authData, onLogout }) {
         .then(data => setAlerts(data))
         .catch(err => console.log('Error fetching alerts', err))
         .finally(() => setLoading(false));
+
+      // Fetch support lessons & stats
+      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/support-lessons`, { headers })
+        .then(res => res.json())
+        .then(data => setSupportLessons(data))
+        .catch(err => console.log('Error fetching support lessons', err));
+
+      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/support-lessons/stats`, { headers })
+        .then(res => res.json())
+        .then(data => setSupportStats(data))
+        .catch(err => console.log('Error fetching support stats', err));
     }
 
     // Fetch CRM prospects and Calendar for ADMIN and ASSISTANT
@@ -142,12 +157,24 @@ export default function Dashboard({ authData, onLogout }) {
         .then(data => setMoniteurLessons(data))
         .catch(err => console.log('Error fetching moniteur lessons', err))
         .finally(() => setLoading(false));
+
+      // Moniteur: also fetch their support lessons
+      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/moniteur/support-lessons`, { headers })
+        .then(res => res.json())
+        .then(data => setSupportLessons(data))
+        .catch(err => console.log('Error fetching moniteur support lessons', err));
     } else if (role === 'CANDIDATE') {
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/candidate/lessons`, { headers })
         .then(res => res.json())
         .then(data => setCandidateData(data))
         .catch(err => console.log('Error fetching candidate data', err))
         .finally(() => setLoading(false));
+
+      // Candidate: also fetch their support lessons
+      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/candidate/support-lessons`, { headers })
+        .then(res => res.json())
+        .then(data => setSupportLessons(data))
+        .catch(err => console.log('Error fetching candidate support lessons', err));
     }
   };
 
@@ -157,6 +184,32 @@ export default function Dashboard({ authData, onLogout }) {
   };
 
   // --- ACTIONS ---
+
+  // ASSISTANT Action: Create Support Lesson
+  const handleCreateSupportLesson = (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+    data.candidateId = parseInt(data.candidateId);
+    data.moniteurId = parseInt(data.moniteurId);
+    data.durationMinutes = parseInt(data.durationMinutes);
+    data.pricePerSession = parseFloat(data.pricePerSession);
+    if (data.vehicleId) data.vehicleId = parseInt(data.vehicleId); else delete data.vehicleId;
+
+    fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/support-lessons`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    })
+      .then(async (res) => {
+        const resData = await res.json();
+        if (!res.ok) throw new Error(resData.message || 'Erreur');
+        triggerFeedback('success', resData.message);
+        e.target.reset();
+        refreshData();
+      })
+      .catch(err => triggerFeedback('danger', err.message));
+  };
 
   // ADMIN Action: Create Staff User
   const handleCreateStaff = (e) => {
@@ -499,6 +552,12 @@ export default function Dashboard({ authData, onLogout }) {
                 <ClipboardList size={16} /> CRM Prospects
               </button>
               <button
+                onClick={() => setActiveTab('support-lessons')}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'support-lessons' ? 'white' : 'var(--text-muted)', background: activeTab === 'support-lessons' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
+              >
+                <BookOpen size={16} /> Cours de Soutien
+              </button>
+              <button
                 onClick={() => setActiveTab('alerts')}
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'alerts' ? 'white' : 'var(--text-muted)', background: activeTab === 'alerts' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
@@ -520,6 +579,12 @@ export default function Dashboard({ authData, onLogout }) {
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'scan-lesson' ? 'white' : 'var(--text-muted)', background: activeTab === 'scan-lesson' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <Scan size={16} /> Scanner & Démarrer
+              </button>
+              <button
+                onClick={() => setActiveTab('moniteur-support')}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'moniteur-support' ? 'white' : 'var(--text-muted)', background: activeTab === 'moniteur-support' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
+              >
+                <BookOpen size={16} /> Mes Cours de Soutien
               </button>
             </>
           )}
@@ -543,6 +608,12 @@ export default function Dashboard({ authData, onLogout }) {
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'candidate-book-driving' ? 'white' : 'var(--text-muted)', background: activeTab === 'candidate-book-driving' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <Car size={16} /> Réserver Conduite
+              </button>
+              <button
+                onClick={() => setActiveTab('candidate-support')}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'candidate-support' ? 'white' : 'var(--text-muted)', background: activeTab === 'candidate-support' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
+              >
+                <BookOpen size={16} /> Mes Cours de Soutien
               </button>
             </>
           )}
@@ -611,6 +682,20 @@ export default function Dashboard({ authData, onLogout }) {
                 <div>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Reliquats Restants</span>
                   <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>{analytics.financesOverview.reliquats} DH</span>
+                </div>
+              </div>
+              <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(139,92,246,0.1)', color: '#8b5cf6' }}><BookOpen /></div>
+                <div>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Revenus Cours Soutien</span>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>{analytics.financesOverview.supportRevenue || 0} DH</span>
+                </div>
+              </div>
+              <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}><Award /></div>
+                <div>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Séances de Soutien</span>
+                  <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>{analytics.kpi.totalSupportLessons || 0}</span>
                 </div>
               </div>
             </div>
@@ -1759,6 +1844,331 @@ export default function Dashboard({ authData, onLogout }) {
                   Toutes les échéances administratives, permis, visites techniques et CAP moniteurs sont en règle.
                 </div>
               )}
+            </div>
+          </div>
+        )}
+        
+        {/* 8. ASSISTANT TAB: Cours de Soutien */}
+        {activeTab === 'support-lessons' && (
+          <div style={{ height: '100%', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            {/* Stats Cards */}
+            {supportStats && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+                <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
+                  <BookOpen size={28} style={{ color: 'var(--accent)', margin: '0 auto 8px auto' }} />
+                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: 'white' }}>{supportStats.totalLessons}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Total Séances</div>
+                </div>
+                <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
+                  <CheckCircle2 size={28} style={{ color: 'var(--success)', margin: '0 auto 8px auto' }} />
+                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#22c55e' }}>{supportStats.totalCompleted}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Terminées</div>
+                </div>
+                <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
+                  <DollarSign size={28} style={{ color: '#f59e0b', margin: '0 auto 8px auto' }} />
+                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#f59e0b' }}>{supportStats.totalRevenue} DH</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Revenus Soutien</div>
+                </div>
+                <div className="card" style={{ textAlign: 'center', padding: '20px' }}>
+                  <Clock size={28} style={{ color: '#8b5cf6', margin: '0 auto 8px auto' }} />
+                  <div style={{ fontSize: '2rem', fontWeight: 'bold', color: '#8b5cf6' }}>{supportStats.totalHoursDelivered}h</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Heures Dispensées</div>
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '20px' }}>
+              {/* Booking Form */}
+              <div className="card">
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 'bold', color: 'white', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <PlusCircle className="text-accent" size={18} /> Planifier une Séance
+                </h3>
+                <form onSubmit={handleCreateSupportLesson}>
+                  <div className="form-group">
+                    <label>Candidat</label>
+                    <select name="candidateId" className="form-control" required>
+                      <option value="">-- Sélectionner --</option>
+                      {candidates.map(c => (
+                        <option key={c.user.id} value={c.user.id}>{c.user.fullName} (CIN: {c.cin})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Moniteur Assigné</label>
+                    <select name="moniteurId" className="form-control" required>
+                      <option value="">-- Sélectionner --</option>
+                      {moniteurs.map(m => (
+                        <option key={m.id} value={m.id}>{m.fullName}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Véhicule (Optionnel)</label>
+                    <select name="vehicleId" className="form-control">
+                      <option value="">-- Aucun --</option>
+                      {vehicles.map(v => (
+                        <option key={v.id} value={v.id}>{v.brand} {v.model} ({v.licensePlate})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Type de Cours</label>
+                    <select name="lessonType" className="form-control" required>
+                      <option value="PERFECTIONNEMENT">Perfectionnement Général</option>
+                      <option value="PREPARATION_EXAMEN">Préparation Examen</option>
+                      <option value="POST_ECHEC">Remise à Niveau Post-Échec</option>
+                      <option value="CRENEAU_PARKING">Créneau & Stationnement</option>
+                      <option value="CONDUITE_AUTOROUTE">Conduite Autoroute</option>
+                      <option value="CONDUITE_NUIT">Conduite de Nuit</option>
+                    </select>
+                  </div>
+                  <div className="grid-2">
+                    <div className="form-group">
+                      <label>Date & Heure</label>
+                      <input type="datetime-local" name="sessionDate" className="form-control" required />
+                    </div>
+                    <div className="form-group">
+                      <label>Durée</label>
+                      <select name="durationMinutes" className="form-control" required>
+                        <option value="60">1 heure (60 min)</option>
+                        <option value="90">1h30 (90 min)</option>
+                        <option value="120">2 heures (120 min)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label>Prix de la Séance (DH)</label>
+                    <input type="number" name="pricePerSession" className="form-control" placeholder="Ex: 150" step="10" min="0" required />
+                  </div>
+                  <div className="form-group">
+                    <label>Commentaires (Optionnel)</label>
+                    <textarea name="comments" className="form-control" rows="2" placeholder="Notes spéciales pour le moniteur..."></textarea>
+                  </div>
+                  <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '10px' }}>
+                    <BookOpen size={16} style={{ marginRight: '8px' }} /> Réserver & Encaisser
+                  </button>
+                </form>
+              </div>
+
+              {/* History Table */}
+              <div className="card" style={{ overflow: 'hidden' }}>
+                <h3 style={{ fontSize: '1.15rem', fontWeight: 'bold', color: 'white', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Calendar className="text-accent" size={18} /> Historique des Séances
+                </h3>
+                <div style={{ overflowX: 'auto', maxHeight: '500px', overflowY: 'auto' }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Date</th>
+                        <th>Candidat</th>
+                        <th>Moniteur</th>
+                        <th>Type</th>
+                        <th>Durée</th>
+                        <th>Prix</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {supportLessons.map(sl => (
+                        <tr key={sl.id}>
+                          <td>{new Date(sl.sessionDate).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                          <td><strong style={{ color: 'white' }}>{sl.candidate?.fullName}</strong></td>
+                          <td>{sl.moniteur?.fullName}</td>
+                          <td>
+                            <span className="badge" style={{ backgroundColor: 'rgba(139,92,246,0.2)', color: '#a78bfa', fontSize: '0.7rem' }}>
+                              {sl.lessonType?.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                          <td>{sl.durationMinutes} min</td>
+                          <td><strong style={{ color: '#22c55e' }}>{sl.pricePerSession} DH</strong></td>
+                          <td>
+                            <span className={`badge ${sl.status === 'COMPLETED' ? 'badge-success' : sl.status === 'CANCELLED' ? 'badge-danger' : 'badge-warning'}`}>
+                              {sl.status === 'COMPLETED' ? 'Terminée' : sl.status === 'CANCELLED' ? 'Annulée' : 'Réservée'}
+                            </span>
+                          </td>
+                          <td>
+                            {sl.status === 'BOOKED' && (
+                              <div style={{ display: 'flex', gap: '6px' }}>
+                                <button
+                                  onClick={() => {
+                                    fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/support-lessons/${sl.id}/complete`, {
+                                      method: 'PUT',
+                                      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({})
+                                    }).then(async res => {
+                                      const d = await res.json();
+                                      if (!res.ok) throw new Error(d.message);
+                                      triggerFeedback('success', d.message);
+                                      refreshData();
+                                    }).catch(err => triggerFeedback('danger', err.message));
+                                  }}
+                                  className="btn btn-secondary"
+                                  style={{ padding: '4px 10px', fontSize: '0.75rem', backgroundColor: 'rgba(34,197,94,0.15)', color: '#22c55e', border: '1px solid rgba(34,197,94,0.3)' }}
+                                  title="Marquer comme terminée"
+                                >
+                                  <CheckCircle2 size={13} /> Terminer
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    if (!confirm('Annuler cette séance de soutien ?')) return;
+                                    fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/support-lessons/${sl.id}/cancel`, {
+                                      method: 'PUT',
+                                      headers: { 'Authorization': `Bearer ${token}` }
+                                    }).then(async res => {
+                                      const d = await res.json();
+                                      if (!res.ok) throw new Error(d.message);
+                                      triggerFeedback('success', d.message);
+                                      refreshData();
+                                    }).catch(err => triggerFeedback('danger', err.message));
+                                  }}
+                                  className="btn btn-secondary"
+                                  style={{ padding: '4px 10px', fontSize: '0.75rem', backgroundColor: 'rgba(239,68,68,0.15)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.3)' }}
+                                  title="Annuler"
+                                >
+                                  <XCircle size={13} /> Annuler
+                                </button>
+                              </div>
+                            )}
+                            {sl.status === 'COMPLETED' && sl.performanceRating && (
+                              <div style={{ display: 'flex', gap: '2px' }}>
+                                {[1,2,3,4,5].map(s => (
+                                  <Star key={s} size={14} style={{ color: s <= sl.performanceRating ? '#f59e0b' : '#334155', fill: s <= sl.performanceRating ? '#f59e0b' : 'none' }} />
+                                ))}
+                              </div>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {supportLessons.length === 0 && (
+                        <tr><td colSpan="8" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '30px' }}>Aucune séance de soutien enregistrée.</td></tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 9. MONITEUR TAB: Mes Cours de Soutien */}
+        {activeTab === 'moniteur-support' && (
+          <div className="card">
+            <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <BookOpen className="text-accent" /> Mes Séances de Soutien Assignées
+            </h3>
+            <div style={{ overflowX: 'auto' }}>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Candidat</th>
+                    <th>Type</th>
+                    <th>Durée</th>
+                    <th>Statut</th>
+                    <th>Commentaires</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {supportLessons.map(sl => (
+                    <tr key={sl.id}>
+                      <td>{new Date(sl.sessionDate).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                      <td><strong style={{ color: 'white' }}>{sl.candidate?.fullName}</strong></td>
+                      <td>
+                        <span className="badge" style={{ backgroundColor: 'rgba(139,92,246,0.2)', color: '#a78bfa', fontSize: '0.7rem' }}>
+                          {sl.lessonType?.replace(/_/g, ' ')}
+                        </span>
+                      </td>
+                      <td>{sl.durationMinutes} min</td>
+                      <td>
+                        <span className={`badge ${sl.status === 'COMPLETED' ? 'badge-success' : sl.status === 'CANCELLED' ? 'badge-danger' : 'badge-warning'}`}>
+                          {sl.status === 'COMPLETED' ? 'Terminée' : sl.status === 'CANCELLED' ? 'Annulée' : 'Réservée'}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{sl.comments || '—'}</td>
+                    </tr>
+                  ))}
+                  {supportLessons.length === 0 && (
+                    <tr><td colSpan="6" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '30px' }}>Aucune séance de soutien assignée.</td></tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* 10. CANDIDATE TAB: Mes Cours de Soutien */}
+        {activeTab === 'candidate-support' && (
+          <div>
+            <div className="card" style={{ marginBottom: '20px' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <BookOpen className="text-accent" /> Mes Cours de Soutien
+              </h3>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '20px' }}>
+                <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(34,197,94,0.1)', border: '1px solid rgba(34,197,94,0.2)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#22c55e' }}>{supportLessons.filter(s => s.status === 'COMPLETED').length}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Séances Terminées</div>
+                </div>
+                <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.2)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#f59e0b' }}>{supportLessons.filter(s => s.status === 'BOOKED').length}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Séances à Venir</div>
+                </div>
+                <div style={{ padding: '16px', borderRadius: '12px', background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)', textAlign: 'center' }}>
+                  <div style={{ fontSize: '1.8rem', fontWeight: 'bold', color: '#a78bfa' }}>
+                    {supportLessons.filter(s => s.status === 'COMPLETED').reduce((sum, s) => sum + (s.durationMinutes || 0), 0) / 60}h
+                  </div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Heures Cumulées</div>
+                </div>
+              </div>
+            </div>
+            <div className="card">
+              <div style={{ overflowX: 'auto' }}>
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Moniteur</th>
+                      <th>Type</th>
+                      <th>Durée</th>
+                      <th>Statut</th>
+                      <th>Évaluation</th>
+                      <th>Retour Moniteur</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {supportLessons.map(sl => (
+                      <tr key={sl.id}>
+                        <td>{new Date(sl.sessionDate).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</td>
+                        <td><strong style={{ color: 'white' }}>{sl.moniteur?.fullName}</strong></td>
+                        <td>
+                          <span className="badge" style={{ backgroundColor: 'rgba(139,92,246,0.2)', color: '#a78bfa', fontSize: '0.7rem' }}>
+                            {sl.lessonType?.replace(/_/g, ' ')}
+                          </span>
+                        </td>
+                        <td>{sl.durationMinutes} min</td>
+                        <td>
+                          <span className={`badge ${sl.status === 'COMPLETED' ? 'badge-success' : sl.status === 'CANCELLED' ? 'badge-danger' : 'badge-warning'}`}>
+                            {sl.status === 'COMPLETED' ? 'Terminée' : sl.status === 'CANCELLED' ? 'Annulée' : 'Réservée'}
+                          </span>
+                        </td>
+                        <td>
+                          {sl.performanceRating ? (
+                            <div style={{ display: 'flex', gap: '2px' }}>
+                              {[1,2,3,4,5].map(s => (
+                                <Star key={s} size={14} style={{ color: s <= sl.performanceRating ? '#f59e0b' : '#334155', fill: s <= sl.performanceRating ? '#f59e0b' : 'none' }} />
+                              ))}
+                            </div>
+                          ) : <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>—</span>}
+                        </td>
+                        <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)', maxWidth: '200px' }}>{sl.moniteurFeedback || '—'}</td>
+                      </tr>
+                    ))}
+                    {supportLessons.length === 0 && (
+                      <tr><td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '30px' }}>Vous n'avez aucun cours de soutien enregistré.</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}

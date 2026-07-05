@@ -1381,18 +1381,49 @@ export default function Dashboard({ authData, onLogout }) {
                           <td>{c.assignedMoniteur ? c.assignedMoniteur.fullName : 'Non affecté'}</td>
                           <td>
                             <span style={{ color: c.totalAmount - c.amountPaid <= 0 ? 'var(--success)' : 'var(--warning)' }}>
-                              {c.amountPaid} / {c.totalAmount} DH
+                              {c.totalAmount - c.amountPaid <= 0 ? (
+                                <>Payé intégralement <br /><small>({c.totalAmount} DH)</small></>
+                              ) : (
+                                <>{c.amountPaid} / {c.totalAmount} DH</>
+                              )}
                             </span>
                           </td>
                           <td>
-                            <button
-                              onClick={() => setContractToPrint(c)}
-                              className="btn btn-secondary"
-                              style={{ padding: '6px 12px', fontSize: '0.8rem' }}
-                              title="Générer Contrat Type PDF"
-                            >
-                              <Printer size={14} /> Imprimer
-                            </button>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                onClick={() => {
+                                  const newTotal = prompt(`Nouveau montant total négocié pour ${c.user.fullName} (DH) :`, c.totalAmount);
+                                  if (newTotal !== null) {
+                                    const parsed = parseFloat(newTotal);
+                                    if (!isNaN(parsed)) {
+                                      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/candidates/${c.user.id}/price`, {
+                                        method: 'PUT',
+                                        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ totalAmount: parsed })
+                                      }).then(async res => {
+                                        const resData = await res.json();
+                                        if(!res.ok) throw new Error(resData.message);
+                                        triggerFeedback('success', resData.message);
+                                        refreshData();
+                                      }).catch(err => triggerFeedback('danger', err.message));
+                                    }
+                                  }
+                                }}
+                                className="btn btn-secondary"
+                                style={{ padding: '6px 12px', fontSize: '0.8rem', backgroundColor: '#334155' }}
+                                title="Modifier le prix négocié"
+                              >
+                                <Edit2 size={14} /> Prix
+                              </button>
+                              <button
+                                onClick={() => setContractToPrint(c)}
+                                className="btn btn-secondary"
+                                style={{ padding: '6px 12px', fontSize: '0.8rem' }}
+                                title="Générer Contrat Type PDF"
+                              >
+                                <Printer size={14} /> Imprimer
+                              </button>
+                            </div>
                           </td>
                         </tr>
                       ))}
@@ -1434,7 +1465,7 @@ export default function Dashboard({ authData, onLogout }) {
                     const remains = c.totalAmount - c.amountPaid;
                     return (
                       <option key={c.user.id} value={c.user.id}>
-                        {c.user.fullName} (CIN: {c.cin}) — Reste à payer: {remains} DH
+                        {c.user.fullName} (CIN: {c.cin}) — {remains <= 0 ? 'Payé intégralement' : `Reste à payer: ${remains} DH`}
                       </option>
                     );
                   })}
@@ -1483,7 +1514,9 @@ export default function Dashboard({ authData, onLogout }) {
                       <select name="candidateId" className="form-control">
                         <option value="">-- Aucun --</option>
                         {candidates.map(c => (
-                          <option key={c.user.id} value={c.user.id}>{c.user.fullName} (Reste: {c.totalAmount - c.amountPaid} DH)</option>
+                          <option key={c.user.id} value={c.user.id}>
+                            {c.user.fullName} — {c.totalAmount - c.amountPaid <= 0 ? 'Payé intégralement' : `Reste: ${c.totalAmount - c.amountPaid} DH`}
+                          </option>
                         ))}
                       </select>
                     </div>

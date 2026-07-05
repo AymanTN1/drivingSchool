@@ -8,6 +8,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 import java.security.Principal;
 import java.time.LocalDate;
@@ -105,8 +108,22 @@ public class DashboardController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")
     @PostMapping("/assistant/caisse")
     @org.springframework.cache.annotation.CacheEvict(value = "analytics", allEntries = true)
+    @Transactional
     public ResponseEntity<?> recordTransaction(@RequestBody CaisseTransactionRequest request, Principal principal) {
         User assistant = userRepository.findByUsername(principal.getName()).orElseThrow();
+
+        if (request.getCandidateId() != null) {
+            Optional<CandidateProfile> profileOpt = candidateProfileRepository.findByUserId(request.getCandidateId());
+            if (profileOpt.isPresent()) {
+                CandidateProfile profile = profileOpt.get();
+                if (profile.getAmountPaid() + request.getAmount() > profile.getTotalAmount()) {
+                    double reste = profile.getTotalAmount() - profile.getAmountPaid();
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "BLOQUÉ: Le montant dépasse le reste à payer (" + reste + " DH).");
+                }
+                profile.setAmountPaid(profile.getAmountPaid() + request.getAmount());
+                candidateProfileRepository.save(profile);
+            }
+        }
 
         CaisseTransaction transaction = new CaisseTransaction();
         transaction.setAssistant(assistant);
@@ -116,21 +133,27 @@ public class DashboardController {
         transaction.setDescription(request.getDescription());
 
         if (request.getCandidateId() != null) {
-            Optional<User> candidateOpt = userRepository.findById(request.getCandidateId());
-            if (candidateOpt.isPresent()) {
-                transaction.setCandidate(candidateOpt.get());
-                // Update amount paid in candidate profile
-                Optional<CandidateProfile> profileOpt = candidateProfileRepository.findByUserId(request.getCandidateId());
-                if (profileOpt.isPresent()) {
-                    CandidateProfile profile = profileOpt.get();
-                    profile.setAmountPaid(profile.getAmountPaid() + request.getAmount());
-                    candidateProfileRepository.save(profile);
-                }
-            }
+            userRepository.findById(request.getCandidateId()).ifPresent(transaction::setCandidate);
         }
 
         caisseTransactionRepository.save(transaction);
         return ResponseEntity.ok(Map.of("message", "Transaction de caisse enregistrée avec succès !"));
+    }
+
+    @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")
+    @PutMapping("/assistant/candidates/{id}/price")
+    public ResponseEntity<?> updateCandidatePrice(@PathVariable Long id, @RequestBody Map<String, Double> body) {
+        CandidateProfile profile = candidateProfileRepository.findByUserId(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Candidat introuvable"));
+        
+        Double newTotal = body.get("totalAmount");
+        if (newTotal == null || newTotal < profile.getAmountPaid()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Le nouveau montant total ne peut pas être inférieur au montant déjà payé (" + profile.getAmountPaid() + " DH).");
+        }
+        
+        profile.setTotalAmount(newTotal);
+        candidateProfileRepository.save(profile);
+        return ResponseEntity.ok(Map.of("message", "Prix négocié mis à jour avec succès !", "newTotal", newTotal));
     }
 
     @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")

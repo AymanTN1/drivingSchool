@@ -723,50 +723,31 @@ export default function Dashboard({ authData, onLogout }) {
               Tableau Analytique de la Demande
             </h2>
 
-            {/* Quick stats figures */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '32px' }}>
-              <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(212,175,55,0.1)', color: 'var(--accent)' }}><Users /></div>
-                <div>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Candidats Inscrits</span>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>{analytics.kpi.totalCandidates}</span>
+
+            {/* ── KPI Grid (responsive, 8 cards) ── */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '16px', marginBottom: '32px' }}>
+              {[
+                { label: 'Candidats Inscrits', value: analytics.kpi.totalCandidates, icon: <Users size={20} />, color: '#d4af37', bg: 'rgba(212,175,55,0.1)' },
+                { label: 'Véhicules Actifs', value: analytics.kpi.totalVehicles, icon: <Car size={20} />, color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+                { label: 'Recettes Caisse', value: `${analytics.financesOverview.recettes} DH`, icon: <DollarSign size={20} />, color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
+                { label: 'Reliquats Restants', value: `${analytics.financesOverview.reliquats} DH`, icon: <AlertCircle size={20} />, color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+                { label: 'Rev. Soutien Encaissé', value: `${analytics.supportFinance?.paidRevenue ?? analytics.financesOverview.supportRevenue ?? 0} DH`, icon: <BookOpen size={20} />, color: '#a78bfa', bg: 'rgba(139,92,246,0.1)' },
+                { label: 'Séances Terminées', value: analytics.kpi.completedSessions ?? analytics.kpi.totalSupportLessons ?? 0, icon: <CheckCircle2 size={20} />, color: '#22c55e', bg: 'rgba(34,197,94,0.08)' },
+                { label: 'Heures Livrées', value: `${analytics.kpi.totalHoursDelivered ?? 0}h`, icon: <Clock size={20} />, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+                { label: 'Revenus Non Encaissés', value: `${analytics.supportFinance?.unpaidPotential ?? 0} DH`, icon: <AlertTriangle size={20} />, color: '#f97316', bg: 'rgba(249,115,22,0.1)' },
+                { label: 'Séances Réservées', value: analytics.kpi.bookedSessions ?? 0, icon: <Calendar size={20} />, color: '#60a5fa', bg: 'rgba(96,165,250,0.1)' },
+                { label: 'Taux Annulation', value: `${analytics.kpi.cancellationRate ?? 0}%`, icon: <XCircle size={20} />, color: '#ef4444', bg: 'rgba(239,68,68,0.08)' },
+                { label: 'Durée Moy. Séance', value: `${analytics.kpi.avgSessionDuration ?? 0} min`, icon: <Activity size={20} />, color: '#818cf8', bg: 'rgba(129,140,248,0.1)' },
+                { label: 'Revenus Projetés', value: `${analytics.supportFinance?.projectedFromBooked ?? 0} DH`, icon: <TrendingUp size={20} />, color: '#4ade80', bg: 'rgba(74,222,128,0.1)' },
+              ].map((kpi, i) => (
+                <div key={i} className="card" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px' }}>
+                  <div style={{ padding: '10px', borderRadius: '10px', background: kpi.bg, color: kpi.color, flexShrink: 0 }}>{kpi.icon}</div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{kpi.label}</div>
+                    <div style={{ fontSize: '1.25rem', fontWeight: 'bold', color: 'white' }}>{kpi.value}</div>
+                  </div>
                 </div>
-              </div>
-              <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(16,185,129,0.1)', color: 'var(--success)' }}><Car /></div>
-                <div>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Véhicules Actifs</span>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>{analytics.kpi.totalVehicles}</span>
-                </div>
-              </div>
-              <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(59,130,246,0.1)', color: '#3b82f6' }}><DollarSign /></div>
-                <div>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Recettes Caisse</span>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>{analytics.financesOverview.recettes} DH</span>
-                </div>
-              </div>
-              <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(239,68,68,0.1)', color: 'var(--danger)' }}><AlertCircle /></div>
-                <div>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Reliquats Restants</span>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>{analytics.financesOverview.reliquats} DH</span>
-                </div>
-              </div>
-              <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(139,92,246,0.1)', color: '#8b5cf6' }}><BookOpen /></div>
-                <div>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Revenus Cours Soutien</span>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>{analytics.financesOverview.supportRevenue || 0} DH</span>
-                </div>
-              </div>
-              <div className="card" style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                <div style={{ padding: '12px', borderRadius: '12px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}><Award /></div>
-                <div>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', display: 'block' }}>Séances de Soutien</span>
-                  <span style={{ fontSize: '1.5rem', fontWeight: 'bold', color: 'white' }}>{analytics.kpi.totalSupportLessons || 0}</span>
-                </div>
-              </div>
+              ))}
             </div>
 
             {/* Graphs grid */}
@@ -1234,6 +1215,123 @@ export default function Dashboard({ authData, onLogout }) {
                 </table>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* ── Module Soutien Analytics (inside analytics tab) ── */}
+        {activeTab === 'analytics' && analytics.supportFinance && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginBottom: '24px' }}>
+            {/* Finance summary mini-cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
+              {[
+                { label: 'Revenus Soutien Encaissés', value: `${analytics.supportFinance.paidRevenue} DH`, color: '#22c55e', icon: '✅', count: `${analytics.supportFinance.paidCount} séances payées` },
+                { label: 'Restant à Encaisser', value: `${analytics.supportFinance.unpaidPotential} DH`, color: '#f97316', icon: '⏳', count: `${analytics.supportFinance.unpaidCount} séances non payées` },
+                { label: 'Revenus Futurs Projetés', value: `${analytics.supportFinance.projectedFromBooked} DH`, color: '#60a5fa', icon: '📅', count: `des séances réservées` },
+                { label: 'Prix Moyen par Séance', value: `${analytics.supportFinance.avgPricePerSession} DH`, color: '#a78bfa', icon: '📊', count: `sur séances terminées` },
+              ].map((c, i) => (
+                <div key={i} className="card" style={{ padding: '16px', borderLeft: `3px solid ${c.color}` }}>
+                  <div style={{ fontSize: '1.4rem', marginBottom: '6px' }}>{c.icon}</div>
+                  <div style={{ color: 'white', fontWeight: '700', fontSize: '1.3rem' }}>{c.value}</div>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '4px' }}>{c.label}</div>
+                  <div style={{ color: c.color, fontSize: '0.7rem', marginTop: '2px' }}>{c.count}</div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px' }}>
+              {/* Monthly Revenue Trend */}
+              {analytics.supportRevenueTrend && (
+                <div className="card">
+                  <h3 style={{ color: 'white', fontWeight: 'bold', fontSize: '1rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <TrendingUp size={16} style={{ color: '#a78bfa' }} /> Tendance Revenus & Séances Soutien (6 mois)
+                  </h3>
+                  <div style={{ height: '220px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={analytics.supportRevenueTrend}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                        <XAxis dataKey="name" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
+                        <YAxis yAxisId="left" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
+                        <YAxis yAxisId="right" orientation="right" stroke="var(--text-muted)" tick={{ fontSize: 11 }} />
+                        <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} labelStyle={{ color: 'white' }} />
+                        <Legend />
+                        <Line yAxisId="left" type="monotone" dataKey="revenus" name="Revenus (DH)" stroke="#a78bfa" strokeWidth={2} dot={{ fill: '#a78bfa', r: 4 }} />
+                        <Line yAxisId="right" type="monotone" dataKey="seances" name="Séances" stroke="#22c55e" strokeWidth={2} dot={{ fill: '#22c55e', r: 4 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+
+              {/* Status Donut */}
+              {analytics.supportByStatus && (
+                <div className="card">
+                  <h3 style={{ color: 'white', fontWeight: 'bold', fontSize: '1rem', marginBottom: '16px' }}>Répartition des Séances</h3>
+                  <div style={{ height: '180px' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie data={analytics.supportByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={75} innerRadius={45} label={({ name, value }) => `${value}`}>
+                          {analytics.supportByStatus.map((entry, i) => (
+                            <Cell key={i} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ backgroundColor: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px' }} />
+                        <Legend />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Moniteur Performance Table */}
+            {analytics.moniteurPerformance?.length > 0 && (
+              <div className="card">
+                <h3 style={{ color: 'white', fontWeight: 'bold', fontSize: '1rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Award size={16} style={{ color: '#f59e0b' }} /> Performance des Moniteurs — Cours de Soutien
+                </h3>
+                <div style={{ overflowX: 'auto' }}>
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>Moniteur</th>
+                        <th>Séances</th>
+                        <th>Heures</th>
+                        <th>CA Généré</th>
+                        <th>Note Clients</th>
+                        <th>Avis</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analytics.moniteurPerformance.map((m, i) => (
+                        <tr key={i}>
+                          <td>
+                            <span style={{ fontWeight: 'bold', color: i === 0 ? '#f59e0b' : i === 1 ? '#94a3b8' : i === 2 ? '#cd7f32' : 'var(--text-muted)' }}>
+                              {i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : `#${i + 1}`}
+                            </span>
+                          </td>
+                          <td><strong style={{ color: 'white' }}>{m.name}</strong></td>
+                          <td><span className="badge badge-success">{m.sessions}</span></td>
+                          <td style={{ color: '#60a5fa' }}>{m.heures}h</td>
+                          <td><strong style={{ color: '#22c55e' }}>{m.revenus} DH</strong></td>
+                          <td>
+                            {m.avgRating ? (
+                              <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                                {[1,2,3,4,5].map(s => (
+                                  <Star key={s} size={12} style={{ color: s <= Math.round(m.avgRating) ? '#f59e0b' : '#334155', fill: s <= Math.round(m.avgRating) ? '#f59e0b' : 'none' }} />
+                                ))}
+                                <span style={{ color: '#f59e0b', fontSize: '0.8rem', marginLeft: '4px', fontWeight: '600' }}>{m.avgRating}</span>
+                              </div>
+                            ) : <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>—</span>}
+                          </td>
+                          <td style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{m.ratingCount} avis</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

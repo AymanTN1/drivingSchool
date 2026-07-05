@@ -703,71 +703,60 @@ public class DashboardController {
 
     @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/admin/analytics")
-    @org.springframework.cache.annotation.Cacheable("analytics")
     public ResponseEntity<?> getAnalytics() {
         Map<String, Object> data = new HashMap<>();
 
-        // 1. Inscriptions trends by month (étude de demande saisonnière)
+        // 1. Inscriptions trends by month
         LocalDate now = LocalDate.now();
         LocalDate sixMonthsAgo = now.minusMonths(5).withDayOfMonth(1);
         List<CandidateProfile> candidatesReg = candidateProfileRepository.findByRegistrationDateAfter(sixMonthsAgo);
         Map<String, Integer> regByMonth = new LinkedHashMap<>();
-        
-        // Initialize last 6 months including current
         for (int i = 5; i >= 0; i--) {
             LocalDate month = now.minusMonths(i);
             String label = month.getMonth().getDisplayName(TextStyle.SHORT, Locale.FRANCE) + " " + month.getYear();
             regByMonth.put(label, 0);
         }
-
         for (CandidateProfile c : candidatesReg) {
             if (c.getRegistrationDate() != null) {
                 LocalDate regDate = c.getRegistrationDate();
                 String label = regDate.getMonth().getDisplayName(TextStyle.SHORT, Locale.FRANCE) + " " + regDate.getYear();
-                if (regByMonth.containsKey(label)) {
-                    regByMonth.put(label, regByMonth.get(label) + 1);
-                }
+                if (regByMonth.containsKey(label)) regByMonth.put(label, regByMonth.get(label) + 1);
             }
         }
-
         List<Map<String, Object>> regSeries = new ArrayList<>();
         regByMonth.forEach((month, count) -> regSeries.add(Map.of("name", month, "inscriptions", count)));
         data.put("registrationsDemand", regSeries);
 
-        // 2. Exam volume distribution over the last 6 months (dates examens)
+        // 2. Exam volume distribution
         Map<String, Integer> examByMonth = new LinkedHashMap<>();
         for (int i = 5; i >= 0; i--) {
             LocalDate month = now.minusMonths(i);
             String label = month.getMonth().getDisplayName(TextStyle.SHORT, Locale.FRANCE) + " " + month.getYear();
             examByMonth.put(label, 0);
         }
-        
         List<CandidateProfile> candidatesExam = candidateProfileRepository.findByNarsaExamDateAfter(sixMonthsAgo);
         for (CandidateProfile c : candidatesExam) {
             if (c.getNarsaExamDate() != null) {
                 LocalDate examDate = c.getNarsaExamDate();
                 String label = examDate.getMonth().getDisplayName(TextStyle.SHORT, Locale.FRANCE) + " " + examDate.getYear();
-                if (examByMonth.containsKey(label)) {
-                    examByMonth.put(label, examByMonth.get(label) + 1);
-                }
+                if (examByMonth.containsKey(label)) examByMonth.put(label, examByMonth.get(label) + 1);
             }
         }
         List<Map<String, Object>> examSeries = new ArrayList<>();
         examByMonth.forEach((month, count) -> examSeries.add(Map.of("name", month, "examens", count)));
         data.put("examSchedules", examSeries);
 
-        // 3. Finances trends (Recettes vs Reliquats cumulés)
+        // 3. Finance overview
         double totalRevenueCollected = caisseTransactionRepository.sumAllAmounts();
         double totalBalanceOutstanding = candidateProfileRepository.sumOutstandingBalances();
         double supportLessonRevenue = supportLessonRepository.sumCompletedRevenue();
-
         data.put("financesOverview", Map.of(
                 "recettes", totalRevenueCollected,
                 "reliquats", totalBalanceOutstanding,
                 "supportRevenue", supportLessonRevenue
         ));
 
-        // 4. Monthly financials details
+        // 4. Monthly financials
         Map<String, Double> financeByMonth = new LinkedHashMap<>();
         for (int i = 5; i >= 0; i--) {
             LocalDate month = now.minusMonths(i);
@@ -778,20 +767,127 @@ public class DashboardController {
         List<CaisseTransaction> transactions = caisseTransactionRepository.findByDateAfter(sixMonthsAgoTime);
         for (CaisseTransaction t : transactions) {
             String label = t.getDate().getMonth().getDisplayName(TextStyle.SHORT, Locale.FRANCE) + " " + t.getDate().getYear();
-            if (financeByMonth.containsKey(label)) {
-                financeByMonth.put(label, financeByMonth.get(label) + t.getAmount());
-            }
+            if (financeByMonth.containsKey(label)) financeByMonth.put(label, financeByMonth.get(label) + t.getAmount());
         }
         List<Map<String, Object>> financeSeries = new ArrayList<>();
         financeByMonth.forEach((month, amount) -> financeSeries.add(Map.of("name", month, "recettes", amount)));
         data.put("financeTrends", financeSeries);
 
-        // General KPI counts
+        // ==================== SUPPORT LESSONS DEEP ANALYTICS ====================
+
+        List<SupportLesson> allSupport = supportLessonRepository.findAll();
+        List<SupportLesson> completedSupport = allSupport.stream().filter(s -> s.getStatus() == BookingStatus.COMPLETED).toList();
+        List<SupportLesson> bookedSupport = allSupport.stream().filter(s -> s.getStatus() == BookingStatus.BOOKED).toList();
+        List<SupportLesson> cancelledSupport = allSupport.stream().filter(s -> s.getStatus() == BookingStatus.CANCELLED).toList();
+        List<SupportLesson> paidSupport = completedSupport.stream().filter(s -> Boolean.TRUE.equals(s.getPaid())).toList();
+        List<SupportLesson> unpaidCompleted = completedSupport.stream().filter(s -> !Boolean.TRUE.equals(s.getPaid())).toList();
+
+        long totalSessions = allSupport.size();
+        long completedCount = completedSupport.size();
+        long bookedCount = bookedSupport.size();
+        long cancelledCount = cancelledSupport.size();
+        double cancellationRate = totalSessions > 0 ? Math.round((cancelledCount * 100.0 / totalSessions) * 10.0) / 10.0 : 0;
+
+        long totalMinutes = completedSupport.stream().mapToLong(s -> s.getDurationMinutes() != null ? s.getDurationMinutes() : 0).sum();
+        double totalHours = Math.round(totalMinutes / 60.0 * 10.0) / 10.0;
+        double avgDurationMin = completedCount > 0 ? Math.round(totalMinutes / (double) completedCount * 10.0) / 10.0 : 0;
+        double avgPrice = completedCount > 0
+                ? Math.round(completedSupport.stream().mapToDouble(s -> s.getPricePerSession() != null ? s.getPricePerSession() : 0).average().orElse(0) * 10.0) / 10.0
+                : 0;
+
+        double unpaidPotential = unpaidCompleted.stream().mapToDouble(s -> s.getPricePerSession() != null ? s.getPricePerSession() : 0).sum();
+        double paidRevenue = paidSupport.stream().mapToDouble(s -> s.getPricePerSession() != null ? s.getPricePerSession() : 0).sum();
+        double projectedRevenue = bookedSupport.stream().mapToDouble(s -> s.getPricePerSession() != null ? s.getPricePerSession() : 0).sum();
+
+        // Monthly support revenue trend (last 6 months)
+        Map<String, Map<String, Object>> supportByMonth = new LinkedHashMap<>();
+        for (int i = 5; i >= 0; i--) {
+            LocalDate month = now.minusMonths(i);
+            String label = month.getMonth().getDisplayName(TextStyle.SHORT, Locale.FRANCE) + " " + month.getYear();
+            Map<String, Object> m = new HashMap<>();
+            m.put("name", label); m.put("revenus", 0.0); m.put("seances", 0);
+            supportByMonth.put(label, m);
+        }
+        for (SupportLesson sl : completedSupport) {
+            if (sl.getSessionDate() != null) {
+                LocalDate d = sl.getSessionDate().toLocalDate();
+                String label = d.getMonth().getDisplayName(TextStyle.SHORT, Locale.FRANCE) + " " + d.getYear();
+                if (supportByMonth.containsKey(label)) {
+                    Map<String, Object> m = supportByMonth.get(label);
+                    m.put("revenus", ((double) m.get("revenus")) + (sl.getPricePerSession() != null ? sl.getPricePerSession() : 0));
+                    m.put("seances", ((int) m.get("seances")) + 1);
+                }
+            }
+        }
+        data.put("supportRevenueTrend", new ArrayList<>(supportByMonth.values()));
+
+        // Sessions by status (for donut)
+        data.put("supportByStatus", List.of(
+                Map.of("name", "Terminées", "value", completedCount, "color", "#22c55e"),
+                Map.of("name", "Réservées", "value", bookedCount, "color", "#f59e0b"),
+                Map.of("name", "Annulées", "value", cancelledCount, "color", "#ef4444")
+        ));
+
+        // Sessions by lesson type breakdown
+        Map<String, Integer> byType = new LinkedHashMap<>();
+        for (SupportLesson sl : completedSupport) {
+            String type = sl.getLessonType() != null ? sl.getLessonType().name().replace("_", " ") : "AUTRE";
+            byType.merge(type, 1, Integer::sum);
+        }
+        List<Map<String, Object>> typeBreakdown = byType.entrySet().stream()
+                .sorted((a, b) -> b.getValue() - a.getValue())
+                .map(e -> Map.<String, Object>of("name", e.getKey(), "value", e.getValue()))
+                .toList();
+        data.put("supportByType", typeBreakdown);
+
+        // Top moniteurs by session volume + revenue generated
+        List<User> moniteurs = userRepository.findAll().stream()
+                .filter(u -> u.getRole() == com.drivingschool.model.Role.MONITEUR && u.isActive())
+                .toList();
+        List<Map<String, Object>> moniteurStats = new ArrayList<>();
+        for (User mon : moniteurs) {
+            List<SupportLesson> monSessions = completedSupport.stream()
+                    .filter(s -> s.getMoniteur().getId().equals(mon.getId())).toList();
+            if (monSessions.isEmpty()) continue;
+
+            double monRevenue = monSessions.stream().mapToDouble(s -> s.getPricePerSession() != null ? s.getPricePerSession() : 0).sum();
+            long monMinutes = monSessions.stream().mapToLong(s -> s.getDurationMinutes() != null ? s.getDurationMinutes() : 0).sum();
+            Double avgRating = supportLessonRepository.avgCandidateRatingByMoniteur(mon.getId());
+            Long ratingCount = supportLessonRepository.countCandidateRatingsByMoniteur(mon.getId());
+
+            Map<String, Object> ms = new HashMap<>();
+            ms.put("name", mon.getFullName());
+            ms.put("sessions", monSessions.size());
+            ms.put("heures", Math.round(monMinutes / 60.0 * 10.0) / 10.0);
+            ms.put("revenus", Math.round(monRevenue * 10.0) / 10.0);
+            ms.put("avgRating", avgRating != null ? Math.round(avgRating * 10.0) / 10.0 : null);
+            ms.put("ratingCount", ratingCount != null ? ratingCount : 0);
+            moniteurStats.add(ms);
+        }
+        // Sort by revenue desc
+        moniteurStats.sort((a, b) -> Double.compare(((Number) b.get("revenus")).doubleValue(), ((Number) a.get("revenus")).doubleValue()));
+        data.put("moniteurPerformance", moniteurStats);
+
+        // 5. General KPI counts (enriched)
         data.put("kpi", Map.of(
                 "totalCandidates", candidateProfileRepository.count(),
                 "totalMoniteurs", moniteurProfileRepository.count(),
                 "totalVehicles", vehicleRepository.count(),
-                "totalSupportLessons", supportLessonRepository.count()
+                "totalSupportLessons", totalSessions,
+                "completedSessions", completedCount,
+                "bookedSessions", bookedCount,
+                "cancelledSessions", cancelledCount,
+                "cancellationRate", cancellationRate,
+                "totalHoursDelivered", totalHours,
+                "avgSessionDuration", avgDurationMin
+        ));
+        data.put("supportFinance", Map.of(
+                "paidRevenue", Math.round(paidRevenue * 10.0) / 10.0,
+                "unpaidPotential", Math.round(unpaidPotential * 10.0) / 10.0,
+                "projectedFromBooked", Math.round(projectedRevenue * 10.0) / 10.0,
+                "avgPricePerSession", avgPrice,
+                "paidCount", paidSupport.size(),
+                "unpaidCount", unpaidCompleted.size()
         ));
 
         return ResponseEntity.ok(data);

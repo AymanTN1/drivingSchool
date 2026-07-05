@@ -403,6 +403,129 @@ public class DashboardController {
         return ResponseEntity.ok(supportLessonRepository.findByCandidateId(candidate.getId()));
     }
 
+    // Candidate: full progression report (carnet de progression)
+    @PreAuthorize("hasRole('CANDIDATE')")
+    @GetMapping("/candidate/progression")
+    public ResponseEntity<?> getCandidateProgression(Principal principal) {
+        User candidate = userRepository.findByUsername(principal.getName()).orElseThrow();
+
+        List<SupportLesson> supportLessons = supportLessonRepository.findByCandidateId(candidate.getId());
+        List<DrivingLessonSlot> drivingLessons = drivingLessonSlotRepository.findByCandidateId(candidate.getId());
+
+        // Global stats
+        List<SupportLesson> completed = supportLessons.stream()
+                .filter(s -> s.getStatus() == BookingStatus.COMPLETED).toList();
+        List<SupportLesson> rated = completed.stream()
+                .filter(s -> s.getPerformanceRating() != null).toList();
+
+        long totalSupportMinutes = completed.stream()
+                .mapToLong(s -> s.getDurationMinutes() != null ? s.getDurationMinutes() : 0).sum();
+        double hoursCompleted = totalSupportMinutes / 60.0;
+        long totalDrivingSlots = drivingLessons.stream()
+                .filter(d -> d.getStatus() != BookingStatus.CANCELLED).count();
+        double avgPerformance = rated.isEmpty() ? 0 :
+                rated.stream().mapToInt(SupportLesson::getPerformanceRating).average().orElse(0);
+
+        // Readiness score (0-100)
+        double hoursScore = Math.min(30, hoursCompleted * 3);
+        double perfScore = rated.isEmpty() ? 0 : (avgPerformance / 5.0) * 50;
+        double sessionsScore = Math.min(20, completed.size() * 4);
+        int readinessScore = Math.min(100, (int) Math.round(perfScore + hoursScore + sessionsScore));
+
+        String readinessLevel;
+        String readinessAdvice;
+        if (readinessScore >= 85) {
+            readinessLevel = "EXCELLENT";
+            readinessAdvice = "Vous etes pret(e) pour l'examen ! Continuez a maintenir ce niveau.";
+        } else if (readinessScore >= 65) {
+            readinessLevel = "BON";
+            readinessAdvice = "Bonne progression ! Quelques seances supplementaires consolideront vos acquis.";
+        } else if (readinessScore >= 40) {
+            readinessLevel = "EN_COURS";
+            readinessAdvice = "Vous progressez bien. Concentrez-vous sur les points faibles identifies par votre moniteur.";
+        } else {
+            readinessLevel = "DEBUT";
+            readinessAdvice = "Debut du parcours. Chaque seance compte — restez regulier(e) !";
+        }
+
+        // Per lesson-type stats
+        Map<String, Map<String, Object>> byTypeMap = new java.util.LinkedHashMap<>();
+        for (SupportLesson sl : completed) {
+            String type = sl.getLessonType() != null ? sl.getLessonType().name() : "AUTRE";
+            byTypeMap.computeIfAbsent(type, k -> {
+                Map<String, Object> m = new HashMap<>();
+                m.put("type", type); m.put("sessions", 0); m.put("totalMinutes", 0);
+                m.put("ratings", new java.util.ArrayList<Integer>());
+                m.put("feedbacks", new java.util.ArrayList<String>());
+                return m;
+            });
+            Map<String, Object> e = byTypeMap.get(type);
+            e.put("sessions", ((int) e.get("sessions")) + 1);
+            e.put("totalMinutes", ((int) e.get("totalMinutes")) + (sl.getDurationMinutes() != null ? sl.getDurationMinutes() : 0));
+            if (sl.getPerformanceRating() != null)
+                ((java.util.List<Integer>) e.get("ratings")).add(sl.getPerformanceRating());
+            if (sl.getMoniteurFeedback() != null && !sl.getMoniteurFeedback().isBlank())
+                ((java.util.List<String>) e.get("feedbacks")).add(sl.getMoniteurFeedback());
+        }
+        List<Map<String, Object>> typeStats = byTypeMap.values().stream().map(e -> {
+            Map<String, Object> res = new HashMap<>(e);
+            @SuppressWarnings("unchecked")
+            java.util.List<Integer> ratings = (java.util.List<Integer>) e.get("ratings");
+            res.put("avgRating", ratings.isEmpty() ? null :
+                    Math.round(ratings.stream().mapToInt(i -> i).average().orElse(0) * 10.0) / 10.0);
+            res.put("ratingCount", ratings.size());
+            return res;
+        }).toList();
+
+        // Timeline: completed sessions sorted most-recent first
+        List<Map<String, Object>> timeline = completed.stream()
+                .sorted((a, b) -> b.getSessionDate().compareTo(a.getSessionDate()))
+                .map(sl -> {
+                    Map<String, Object> t = new HashMap<>();
+                    t.put("id", sl.getId());
+                    t.put("sessionDate", sl.getSessionDate());
+                    t.put("durationMinutes", sl.getDurationMinutes());
+                    t.put("lessonType", sl.getLessonType() != null ? sl.getLessonType().name() : null);
+                    t.put("moniteurName", sl.getMoniteur().getFullName());
+                    t.put("performanceRating", sl.getPerformanceRating());
+                    t.put("moniteurFeedback", sl.getMoniteurFeedback());
+                    t.put("vehicleName", sl.getVehicle() != null ?
+                            sl.getVehicle().getBrand() + " " + sl.getVehicle().getModel() : null);
+                    return t;
+                }).toList();
+
+        // Next upcoming session
+        Map<String, Object> nextSessionMap = supportLessons.stream()
+                .filter(s -> s.getStatus() == BookingStatus.BOOKED && s.getSessionDate().isAfter(LocalDateTime.now()))
+                .min((a, b) -> a.getSessionDate().compareTo(b.getSessionDate()))
+                .map(sl -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("sessionDate", sl.getSessionDate());
+                    m.put("durationMinutes", sl.getDurationMinutes());
+                    m.put("lessonType", sl.getLessonType() != null ? sl.getLessonType().name() : null);
+                    m.put("moniteurName", sl.getMoniteur().getFullName());
+                    m.put("pricePerSession", sl.getPricePerSession());
+                    return m;
+                }).orElse(null);
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("candidateName", candidate.getFullName());
+        response.put("globalStats", Map.of(
+                "completedSessions", completed.size(),
+                "totalHours", Math.round(hoursCompleted * 10.0) / 10.0,
+                "totalDrivingSlots", totalDrivingSlots,
+                "averagePerformance", Math.round(avgPerformance * 10.0) / 10.0,
+                "ratedSessions", rated.size(),
+                "upcomingSessions", supportLessons.stream().filter(s -> s.getStatus() == BookingStatus.BOOKED).count()
+        ));
+        response.put("readiness", Map.of("score", readinessScore, "level", readinessLevel, "advice", readinessAdvice));
+        response.put("byType", typeStats);
+        response.put("timeline", timeline);
+        response.put("nextSession", nextSessionMap != null ? nextSessionMap : Map.of());
+
+        return ResponseEntity.ok(response);
+    }
+
     // Candidate: rate their moniteur after a completed session
     @PreAuthorize("hasRole('CANDIDATE')")
     @PutMapping("/candidate/support-lessons/{id}/rate")

@@ -71,6 +71,10 @@ export default function Dashboard({ authData, onLogout }) {
   // Admin: moniteur ratings report
   const [moniteurRatingsReport, setMoniteurRatingsReport] = useState(null);
 
+  // Candidate: progression report (lazy-loaded)
+  const [progression, setProgression] = useState(null);
+  const [progressionLoading, setProgressionLoading] = useState(false);
+
   // Fetching context data based on Role
   useEffect(() => {
     // Set initial tab based on role
@@ -250,6 +254,18 @@ export default function Dashboard({ authData, onLogout }) {
       .then(data => setMoniteurAvailability(data))
       .catch(err => console.log('Availability check error', err))
       .finally(() => setAvailabilityChecking(false));
+  };
+
+  // Candidate: fetch progression report (lazy)
+  const fetchProgression = () => {
+    setProgressionLoading(true);
+    fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/candidate/progression`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    })
+      .then(res => res.json())
+      .then(data => setProgression(data))
+      .catch(err => console.log('Progression error', err))
+      .finally(() => setProgressionLoading(false));
   };
 
   // ADMIN Action: Create Staff User
@@ -661,6 +677,12 @@ export default function Dashboard({ authData, onLogout }) {
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'candidate-support' ? 'white' : 'var(--text-muted)', background: activeTab === 'candidate-support' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <BookOpen size={16} /> Mes Cours de Soutien
+              </button>
+              <button
+                onClick={() => { setActiveTab('carnet-progression'); if (!progression) fetchProgression(); }}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'carnet-progression' ? 'white' : 'var(--text-muted)', background: activeTab === 'carnet-progression' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
+              >
+                <TrendingUp size={16} /> Carnet de Progression
               </button>
             </>
           )}
@@ -2614,6 +2636,183 @@ export default function Dashboard({ authData, onLogout }) {
                 </table>
               </div>
             </div>
+          </div>
+        )}
+
+        {/* CARNET DE PROGRESSION — CANDIDATE */}
+        {activeTab === 'carnet-progression' && role === 'CANDIDATE' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {progressionLoading && (
+              <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
+                <div style={{ width: '40px', height: '40px', border: '4px solid var(--accent)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 16px auto' }} />
+                <p style={{ color: 'var(--text-muted)' }}>Calcul de votre progression...</p>
+              </div>
+            )}
+            {!progressionLoading && !progression && (
+              <div className="card" style={{ textAlign: 'center', padding: '60px' }}>
+                <TrendingUp size={48} style={{ color: 'var(--text-muted)', display: 'block', margin: '0 auto 16px auto' }} />
+                <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>Chargez votre carnet de progression.</p>
+                <button className="btn btn-primary" onClick={fetchProgression}>
+                  <TrendingUp size={16} style={{ marginRight: '8px' }} /> Charger mon Carnet
+                </button>
+              </div>
+            )}
+            {!progressionLoading && progression && (
+              <>
+                {/* Next session banner */}
+                {progression.nextSession && Object.keys(progression.nextSession).length > 0 && (
+                  <div style={{ padding: '16px 20px', borderRadius: '12px', background: 'linear-gradient(90deg, rgba(99,102,241,0.15), rgba(139,92,246,0.08))', border: '1px solid rgba(99,102,241,0.25)', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                    <Calendar size={22} style={{ color: '#818cf8', flexShrink: 0 }} />
+                    <div>
+                      <div style={{ color: 'white', fontWeight: '600', fontSize: '0.9rem' }}>Prochaine séance avec {progression.nextSession.moniteurName}</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '2px' }}>
+                        {new Date(progression.nextSession.sessionDate).toLocaleString('fr-FR', { weekday: 'long', day: '2-digit', month: 'long', hour: '2-digit', minute: '2-digit' })} — {progression.nextSession.durationMinutes} min · {progression.nextSession.lessonType?.replace(/_/g, ' ')}
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* Readiness gauge */}
+                {(() => {
+                  const r = progression.readiness;
+                  const color = r.score >= 85 ? '#22c55e' : r.score >= 65 ? '#3b82f6' : r.score >= 40 ? '#f59e0b' : '#ef4444';
+                  const emoji = r.score >= 85 ? '🏆' : r.score >= 65 ? '📈' : r.score >= 40 ? '🔄' : '🚀';
+                  return (
+                    <div className="card" style={{ background: 'linear-gradient(135deg, rgba(15,23,42,0.9), rgba(30,41,59,0.9))' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ color: 'white', fontWeight: '700', fontSize: '1.1rem' }}>{emoji} Score de Préparation à l'Examen</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '0.82rem', marginTop: '4px' }}>{r.advice}</div>
+                        </div>
+                        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '16px' }}>
+                          <div style={{ fontSize: '2.5rem', fontWeight: '800', color, lineHeight: 1 }}>{r.score}</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>/ 100</div>
+                        </div>
+                      </div>
+                      <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '999px', height: '12px', overflow: 'hidden' }}>
+                        <div style={{ height: '100%', width: `${r.score}%`, background: `linear-gradient(90deg, ${color}88, ${color})`, borderRadius: '999px', boxShadow: `0 0 12px ${color}66`, transition: 'width 1s ease' }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '8px', fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                        <span>🚀 Débutant</span><span>🔄 En cours</span><span>📈 Bon niveau</span><span>🏆 Prêt !</span>
+                      </div>
+                    </div>
+                  );
+                })()}
+                {/* KPI cards */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(145px, 1fr))', gap: '12px' }}>
+                  {[
+                    { label: 'Séances Terminées', value: progression.globalStats.completedSessions, icon: '✅', color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+                    { label: 'Heures de Soutien', value: `${progression.globalStats.totalHours}h`, icon: '⏱️', color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
+                    { label: 'Note Moy. Moniteur', value: progression.globalStats.ratedSessions > 0 ? `${progression.globalStats.averagePerformance}/5` : '—', icon: '⭐', color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+                    { label: 'Leçons Conduite', value: progression.globalStats.totalDrivingSlots, icon: '🚗', color: '#a78bfa', bg: 'rgba(167,139,250,0.1)' },
+                    { label: 'À Venir', value: progression.globalStats.upcomingSessions, icon: '📅', color: '#f97316', bg: 'rgba(249,115,22,0.1)' },
+                  ].map((kpi, i) => (
+                    <div key={i} style={{ padding: '14px', borderRadius: '12px', background: kpi.bg, border: `1px solid ${kpi.color}30`, textAlign: 'center' }}>
+                      <div style={{ fontSize: '1.4rem', marginBottom: '4px' }}>{kpi.icon}</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: '800', color: kpi.color }}>{kpi.value}</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.7rem', marginTop: '4px' }}>{kpi.label}</div>
+                    </div>
+                  ))}
+                </div>
+                {/* Per-type skill breakdown */}
+                {progression.byType?.length > 0 && (
+                  <div className="card">
+                    <h3 style={{ color: 'white', fontWeight: 'bold', fontSize: '1.05rem', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <ClipboardList size={16} className="text-accent" /> Analyse par Type de Cours
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: '12px' }}>
+                      {progression.byType.map((t, i) => {
+                        const emo = { PERFECTIONNEMENT: '🔧', PREPARATION_EXAMEN: '📝', POST_ECHEC: '💪', CRENEAU_PARKING: '🅿️', CONDUITE_AUTOROUTE: '🛣️', CONDUITE_NUIT: '🌙' };
+                        const avg = t.avgRating;
+                        const barColor = avg >= 4 ? '#22c55e' : avg >= 3 ? '#f59e0b' : avg ? '#ef4444' : '#64748b';
+                        return (
+                          <div key={i} style={{ padding: '14px', borderRadius: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
+                              <span style={{ fontSize: '1.2rem' }}>{emo[t.type] || '📋'}</span>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ color: 'white', fontSize: '0.85rem', fontWeight: '600' }}>{t.type?.replace(/_/g, ' ')}</div>
+                                <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>{t.sessions} séance(s) · {Math.round(t.totalMinutes / 60 * 10) / 10}h</div>
+                              </div>
+                              {avg && <div style={{ color: barColor, fontWeight: 'bold', fontSize: '0.9rem', flexShrink: 0 }}>{avg}★</div>}
+                            </div>
+                            {avg && (
+                              <div style={{ background: 'rgba(255,255,255,0.05)', borderRadius: '999px', height: '6px', overflow: 'hidden', marginBottom: '8px' }}>
+                                <div style={{ height: '100%', width: `${(avg / 5) * 100}%`, background: barColor, borderRadius: '999px', transition: 'width 0.8s ease' }} />
+                              </div>
+                            )}
+                            {t.feedbacks?.length > 0 && (
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic', padding: '6px 8px', background: 'rgba(0,0,0,0.2)', borderRadius: '6px', borderLeft: '2px solid var(--accent)' }}>
+                                "{t.feedbacks[t.feedbacks.length - 1]}"
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {/* Timeline */}
+                {progression.timeline?.length > 0 && (
+                  <div className="card">
+                    <h3 style={{ color: 'white', fontWeight: 'bold', fontSize: '1.05rem', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Activity size={16} className="text-accent" /> Historique Détaillé des Séances
+                    </h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0' }}>
+                      {progression.timeline.map((sl, idx) => {
+                        const emo = { PERFECTIONNEMENT: '🔧', PREPARATION_EXAMEN: '📝', POST_ECHEC: '💪', CRENEAU_PARKING: '🅿️', CONDUITE_AUTOROUTE: '🛣️', CONDUITE_NUIT: '🌙' };
+                        const rc = [null, '#ef4444', '#f97316', '#f59e0b', '#3b82f6', '#22c55e'];
+                        const rl = ['', 'Très insuffisant', 'À améliorer', 'Acceptable', 'Bon niveau', 'Excellent !'];
+                        return (
+                          <div key={sl.id} style={{ display: 'flex', gap: '16px', paddingBottom: '24px', position: 'relative' }}>
+                            {idx < progression.timeline.length - 1 && (
+                              <div style={{ position: 'absolute', left: '19px', top: '40px', bottom: 0, width: '2px', background: 'rgba(255,255,255,0.05)' }} />
+                            )}
+                            <div style={{ flexShrink: 0, width: '40px', height: '40px', borderRadius: '50%', background: sl.performanceRating ? `${rc[sl.performanceRating]}22` : 'rgba(255,255,255,0.05)', border: `2px solid ${sl.performanceRating ? rc[sl.performanceRating] : 'rgba(255,255,255,0.1)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1rem' }}>
+                              {emo[sl.lessonType] || '📋'}
+                            </div>
+                            <div style={{ flex: 1, paddingTop: '4px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px', flexWrap: 'wrap', gap: '4px' }}>
+                                <div>
+                                  <span style={{ color: 'white', fontWeight: '600', fontSize: '0.9rem' }}>{sl.lessonType?.replace(/_/g, ' ')}</span>
+                                  <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginLeft: '8px' }}>
+                                    avec {sl.moniteurName} · {sl.durationMinutes} min{sl.vehicleName ? ` · ${sl.vehicleName}` : ''}
+                                  </span>
+                                </div>
+                                <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', flexShrink: 0 }}>
+                                  {new Date(sl.sessionDate).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </span>
+                              </div>
+                              {sl.performanceRating && (
+                                <div style={{ display: 'flex', gap: '2px', marginBottom: '8px', alignItems: 'center' }}>
+                                  {[1,2,3,4,5].map(s => (
+                                    <Star key={s} size={13} style={{ color: s <= sl.performanceRating ? rc[sl.performanceRating] : '#334155', fill: s <= sl.performanceRating ? rc[sl.performanceRating] : 'none' }} />
+                                  ))}
+                                  <span style={{ fontSize: '0.75rem', color: rc[sl.performanceRating], marginLeft: '4px', fontWeight: '600' }}>{rl[sl.performanceRating]}</span>
+                                </div>
+                              )}
+                              {sl.moniteurFeedback && (
+                                <div style={{ fontSize: '0.82rem', color: '#cbd5e1', lineHeight: 1.6, padding: '10px 14px', background: 'rgba(0,0,0,0.25)', borderRadius: '10px', borderLeft: '3px solid var(--accent)', fontStyle: 'italic' }}>
+                                  <span style={{ color: 'var(--accent)', fontSize: '0.72rem', fontWeight: '600', display: 'block', marginBottom: '4px', fontStyle: 'normal' }}>💬 Retour de {sl.moniteurName}</span>
+                                  "{sl.moniteurFeedback}"
+                                </div>
+                              )}
+                              {!sl.performanceRating && !sl.moniteurFeedback && (
+                                <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', fontStyle: 'italic' }}>Aucun retour du moniteur pour cette séance.</div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+                {progression.timeline?.length === 0 && (
+                  <div className="card" style={{ textAlign: 'center', padding: '50px', color: 'var(--text-muted)' }}>
+                    <BookOpen size={36} style={{ margin: '0 auto 12px auto', display: 'block' }} />
+                    <p>Aucune séance terminée pour le moment. Votre carnet se remplira après vos premières séances.</p>
+                  </div>
+                )}
+              </>
+            )}
           </div>
         )}
 

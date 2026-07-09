@@ -103,7 +103,14 @@ public class BookingControllerTest {
         candidateProfile.setAmountPaid(3500.0);
         candidateProfileRepository.save(candidateProfile);
 
-        LocalDate examDate = LocalDate.now().plusDays(15);
+        // Use a far-future month to avoid collision with seed data quotas
+        LocalDate examDate = LocalDate.now().plusMonths(8).withDayOfMonth(10);
+        String monthYearKey = examDate.format(DateTimeFormatter.ofPattern("MM-yyyy"));
+
+        // Record the quota before the test (may be 0 or may not exist yet)
+        int quotaBefore = narsaQuotaRepository.findByMonthYear(monthYearKey)
+                .map(NarsaQuota::getUsedQuota).orElse(0);
+
         Map<String, String> requestBody = new HashMap<>();
         requestBody.put("examDate", examDate.toString());
 
@@ -117,10 +124,9 @@ public class BookingControllerTest {
         CandidateProfile updatedProfile = candidateProfileRepository.findByUserId(candidateUser.getId()).orElseThrow();
         assertEquals(examDate, updatedProfile.getNarsaExamDate());
 
-        // Verify quota consumed
-        String monthYearKey = examDate.format(DateTimeFormatter.ofPattern("MM-yyyy"));
+        // Verify quota was incremented by exactly 1
         NarsaQuota quota = narsaQuotaRepository.findByMonthYear(monthYearKey).orElseThrow();
-        assertEquals(1, quota.getUsedQuota());
+        assertEquals(quotaBefore + 1, quota.getUsedQuota());
     }
 
     @Test
@@ -130,12 +136,17 @@ public class BookingControllerTest {
         candidateProfile.setAmountPaid(3500.0);
         candidateProfileRepository.save(candidateProfile);
 
-        LocalDate examDate = LocalDate.now().plusDays(20);
+        // Use a far-future month to avoid collision with seed data quotas
+        LocalDate examDate = LocalDate.now().plusMonths(10).withDayOfMonth(15);
         String monthYearKey = examDate.format(DateTimeFormatter.ofPattern("MM-yyyy"));
 
-        // Setup a pre-exhausted quota
-        NarsaQuota exhaustedQuota = new NarsaQuota();
-        exhaustedQuota.setMonthYear(monthYearKey);
+        // Setup a pre-exhausted quota (find existing or create new)
+        NarsaQuota exhaustedQuota = narsaQuotaRepository.findByMonthYear(monthYearKey)
+                .orElseGet(() -> {
+                    NarsaQuota q = new NarsaQuota();
+                    q.setMonthYear(monthYearKey);
+                    return q;
+                });
         exhaustedQuota.setTotalQuota(5);
         exhaustedQuota.setUsedQuota(5);
         narsaQuotaRepository.save(exhaustedQuota);

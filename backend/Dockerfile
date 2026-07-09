@@ -1,19 +1,17 @@
-FROM eclipse-temurin:21-jdk-alpine as build
+FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
 WORKDIR /workspace/app
 
-# Copier le wrapper maven et les fichiers pom
-COPY mvnw .
-COPY .mvn .mvn
+# Copier le fichier pom
 COPY pom.xml .
 
 # Télécharger les dépendances
-RUN ./mvnw dependency:go-offline
+RUN mvn dependency:go-offline
 
 # Copier le code source
 COPY src src
 
 # Compiler l'application en ignorant les tests
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests
 
 # Étape d'exécution
 FROM eclipse-temurin:21-jre-alpine

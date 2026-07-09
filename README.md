@@ -44,8 +44,8 @@ graph TD
     WAF -->|Sert les fichiers statiques| Frontend
     WAF -->|Reverse Proxy - Filtre XSS & SQLi| Backend
     Frontend -.->|Appels API sécurisés par JWT| Backend
-    Backend <-->|Cache rapide (~5ms)| Cache
-    Backend <-->|JPA / Hibernate (Transactions)| DB
+    Backend <-->|"Cache rapide (~5ms)"| Cache
+    Backend <-->|"JPA / Hibernate (Transactions)"| DB
 ```
 
 ---

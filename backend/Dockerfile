@@ -1,15 +1,28 @@
-FROM maven:3.9.6-eclipse-temurin-21-alpine AS build
-WORKDIR /app
+FROM eclipse-temurin:21-jdk-alpine as build
+WORKDIR /workspace/app
+
+# Copier le wrapper maven et les fichiers pom
+COPY mvnw .
+COPY .mvn .mvn
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
 
-COPY src ./src
-RUN mvn clean package -DskipTests
+# Télécharger les dépendances
+RUN ./mvnw dependency:go-offline
 
+# Copier le code source
+COPY src src
+
+# Compiler l'application en ignorant les tests
+RUN ./mvnw clean package -DskipTests
+
+# Étape d'exécution
 FROM eclipse-temurin:21-jre-alpine
 WORKDIR /app
-COPY --from=build /app/target/*.jar app.jar
-RUN mkdir -p data
+COPY --from=build /workspace/app/target/*.jar app.jar
+
+# Variables d'environnement par défaut
+ENV SPRING_PROFILES_ACTIVE=prod
+ENV SERVER_PORT=8080
+
 EXPOSE 8080
-# Render free tier = 512MB RAM, on active le profil prod pour PostgreSQL
-ENTRYPOINT ["java", "-Xmx300m", "-Xms128m", "-XX:+UseSerialGC", "-Dspring.profiles.active=prod", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]

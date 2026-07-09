@@ -1,113 +1,58 @@
 version: '3.8'
 
 services:
-  # -----------------------------------------------------------
-  # ZONE DÉMILITARISÉE (DMZ) - Exposée à Internet
-  # -----------------------------------------------------------
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-    container_name: erp-frontend-waf
-    ports:
-      - "80:8080" # Exposed to outside world on port 80
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 256M
-    networks:
-      - dmz_net
-    depends_on:
-      backend:
-        condition: service_healthy
-
-  # -----------------------------------------------------------
-  # ZONE MIXTE - Fait le pont entre DMZ et LAN
-  # -----------------------------------------------------------
   backend:
     build: 
       context: ./backend
       dockerfile: Dockerfile
-    container_name: erp-backend-api
-    env_file:
-      - .env
+    ports:
+      - "8080:8080"
     environment:
-      - SPRING_PROFILES_ACTIVE=${SPRING_PROFILES_ACTIVE}
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://${DB_HOST}:${DB_PORT}/${DB_NAME}
-      - SPRING_DATASOURCE_USERNAME=${DB_USER}
-      - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 512M
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    networks:
-      - dmz_net  # Reçoit le trafic légitime du WAF
-      - lan_net  # Accède à la base de données sécurisée
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/mdsms
+      - SPRING_DATASOURCE_USERNAME=postgres
+      - SPRING_DATASOURCE_PASSWORD=postgres
+      - SPRING_REDIS_HOST=redis
+      - SPRING_REDIS_PORT=6379
+      - APP_JWTSECRET=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - mdsms-network
 
-  # -----------------------------------------------------------
-  # RÉSEAU LOCAL SÉCURISÉ (LAN) - Aucune connexion internet
-  # -----------------------------------------------------------
   db:
     image: postgres:15-alpine
-    container_name: erp-secure-db
-    env_file:
-      - .env
+    ports:
+      - "5432:5432"
     environment:
-      - POSTGRES_DB=${DB_NAME}
-      - POSTGRES_USER=${DB_USER}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - POSTGRES_DB=mdsms
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
-      - lan_net # Isolé du monde extérieur
+      - mdsms-network
 
   redis:
     image: redis:7-alpine
-    container_name: erp-cache-redis
-    restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 128M
+    ports:
+      - "6379:6379"
+    volumes:
+      - redisdata:/data
     networks:
-      - lan_net
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
-networks:
-  dmz_net:
-    driver: bridge
-  lan_net:
-    driver: bridge
-    internal: true
+      - mdsms-network
 
 volumes:
   pgdata:
+  redisdata:
+
+networks:
+  mdsms-network:
+    driver: bridge

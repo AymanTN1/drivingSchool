@@ -14,6 +14,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.security.Principal;
 import java.util.Optional;
 
@@ -31,7 +32,7 @@ public class AuthController {
     JwtUtils jwtUtils;
 
     @PostMapping("/signin")
-    public ResponseEntity<?> authenticateUser(@RequestBody LoginRequest loginRequest) {
+    public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));

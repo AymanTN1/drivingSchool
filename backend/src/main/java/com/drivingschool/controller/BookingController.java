@@ -11,6 +11,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
 import java.security.Principal;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -57,7 +58,7 @@ public class BookingController {
 
     @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")
     @PostMapping("/assistant/candidates")
-    public ResponseEntity<?> enrollCandidate(@RequestBody CandidateRegistrationRequest request, Principal principal) {
+    public ResponseEntity<?> enrollCandidate(@Valid @RequestBody CandidateRegistrationRequest request, Principal principal) {
         if (userRepository.findByUsername(request.getUsername()).isPresent()) {
             return ResponseEntity.badRequest().body(Map.of("message", "Nom d'utilisateur candidat déjà existant !"));
         }

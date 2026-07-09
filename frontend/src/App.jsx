@@ -14,13 +14,29 @@ export default function App() {
       try {
         const parsed = JSON.parse(storedUser);
         setUser(parsed);
-        // We do NOT setView('dashboard') here anymore.
-        // We want everyone to see the beautiful landing page first!
-        // The "Se connecter" button will say "Mon Espace (Name)" instead.
       } catch (e) {
         localStorage.removeItem('mdsms_user');
       }
     }
+
+    // Global fetch interceptor to handle 401/403 gracefully and prevent JSON parse crashes on errors
+    const originalFetch = window.fetch;
+    window.fetch = async (...args) => {
+      const response = await originalFetch(...args);
+      if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+          localStorage.removeItem('mdsms_user');
+          setUser(null);
+          setView('landing');
+          throw new Error("Session expired");
+        }
+      }
+      return response;
+    };
+
+    return () => {
+      window.fetch = originalFetch;
+    };
   }, []);
 
   const handleLoginSuccess = (userData) => {

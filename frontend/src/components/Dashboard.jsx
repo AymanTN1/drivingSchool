@@ -92,7 +92,7 @@ export default function Dashboard({ authData, onLogout }) {
     fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/admin/users`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-      .then(res => res.json())
+      .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
       .then(data => {
         const mons = data.filter(u => u.role === 'MONITEUR');
         setMoniteurs(mons);
@@ -102,7 +102,7 @@ export default function Dashboard({ authData, onLogout }) {
     fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/fleet`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-      .then(res => res.json())
+      .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
       .then(data => setVehicles(data))
       .catch(err => console.log('Error fetching fleet', err));
   };
@@ -113,59 +113,59 @@ export default function Dashboard({ authData, onLogout }) {
 
     if (role === 'ADMIN') {
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/admin/analytics`, { headers })
-        .then(res => res.json())
+        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
         .then(data => setAnalytics(data))
         .catch(err => console.log('Error fetching analytics', err))
         .finally(() => setLoading(false));
 
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/fleet/analytics`, { headers })
-        .then(res => res.json())
+        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
         .then(data => setFleetAnalytics(data))
         .catch(err => console.log('Error fetching fleet analytics', err));
 
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/payroll/moniteurs`, { headers })
-        .then(res => res.json())
+        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
         .then(data => setPayrollData(data))
         .catch(err => console.log('Error fetching payroll', err));
 
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/payroll/slips`, { headers })
-        .then(res => res.json())
+        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
         .then(data => setPaySlips(data))
         .catch(err => console.log('Error fetching pay slips', err));
 
       // ADMIN: fetch moniteur ratings report (confidential)
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/admin/moniteurs/ratings-report`, { headers })
-        .then(res => res.json())
+        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
         .then(data => setMoniteurRatingsReport(data))
         .catch(err => console.log('Error fetching ratings report', err));
     } else if (role === 'ASSISTANT') {
       // Fetch candidates list
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/candidates`, { headers })
-        .then(res => res.json())
+        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
         .then(data => setCandidates(data))
         .catch(err => console.log('Error fetching candidates', err));
 
       // Fetch transaction list
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/caisse`, { headers })
-        .then(res => res.json())
+        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
         .then(data => setTransactions(data))
         .catch(err => console.log('Error fetching caisse', err));
 
       // Fetch alerts list
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/alerts`, { headers })
-        .then(res => res.json())
+        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
         .then(data => setAlerts(data))
         .catch(err => console.log('Error fetching alerts', err))
         .finally(() => setLoading(false));
 
       // Fetch support lessons & stats
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/support-lessons`, { headers })
-        .then(res => res.json())
+        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
         .then(data => setSupportLessons(data))
         .catch(err => console.log('Error fetching support lessons', err));
 
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/support-lessons/stats`, { headers })
-        .then(res => res.json())
+        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
         .then(data => setSupportStats(data))
         .catch(err => console.log('Error fetching support stats', err));
     }
@@ -173,36 +173,36 @@ export default function Dashboard({ authData, onLogout }) {
     // Fetch CRM prospects and Calendar for ADMIN and ASSISTANT
     if (role === 'ADMIN' || role === 'ASSISTANT') {
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/prospects`, { headers })
-        .then(res => res.json())
+        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
         .then(data => setCrmProspects(data))
         .catch(err => console.log('Error fetching prospects', err));
         
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/lessons`, { headers })
-        .then(res => res.json())
+        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
         .then(data => setAllLessons(data))
         .catch(err => console.log('Error fetching all lessons', err));
     } else if (role === 'MONITEUR') {
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/moniteur/lessons`, { headers })
-        .then(res => res.json())
+        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
         .then(data => setMoniteurLessons(data))
         .catch(err => console.log('Error fetching moniteur lessons', err))
         .finally(() => setLoading(false));
 
       // Moniteur: also fetch their support lessons
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/moniteur/support-lessons`, { headers })
-        .then(res => res.json())
+        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
         .then(data => setSupportLessons(data))
         .catch(err => console.log('Error fetching moniteur support lessons', err));
     } else if (role === 'CANDIDATE') {
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/candidate/lessons`, { headers })
-        .then(res => res.json())
+        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
         .then(data => setCandidateData(data))
         .catch(err => console.log('Error fetching candidate data', err))
         .finally(() => setLoading(false));
 
       // Candidate: also fetch their support lessons
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/candidate/support-lessons`, { headers })
-        .then(res => res.json())
+        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
         .then(data => setSupportLessons(data))
         .catch(err => console.log('Error fetching candidate support lessons', err));
     }
@@ -250,7 +250,7 @@ export default function Dashboard({ authData, onLogout }) {
     fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/support-lessons/availability?sessionDate=${encodeURIComponent(datetime)}&durationMinutes=${duration}`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-      .then(res => res.json())
+      .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
       .then(data => setMoniteurAvailability(data))
       .catch(err => console.log('Availability check error', err))
       .finally(() => setAvailabilityChecking(false));
@@ -262,7 +262,7 @@ export default function Dashboard({ authData, onLogout }) {
     fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/candidate/progression`, {
       headers: { 'Authorization': `Bearer ${token}` }
     })
-      .then(res => res.json())
+      .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
       .then(data => setProgression(data))
       .catch(err => console.log('Progression error', err))
       .finally(() => setProgressionLoading(false));
@@ -3176,7 +3176,7 @@ export default function Dashboard({ authData, onLogout }) {
                           headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                           body: JSON.stringify({ pin: data.pin })
                         })
-                        .then(res => res.json())
+                        .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
                         .then(resData => {
                           if (resData.message.includes('succès')) {
                             triggerFeedback('success', resData.message);
@@ -3221,7 +3221,7 @@ export default function Dashboard({ authData, onLogout }) {
                       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
                       body: JSON.stringify({ pin: pinInput })
                     })
-                    .then(res => res.json())
+                    .then(res => { if(!res.ok) throw new Error(API Error); return res.json(); })
                     .then(resData => {
                       if (resData.message.includes('succès')) {
                         triggerFeedback('success', resData.message);

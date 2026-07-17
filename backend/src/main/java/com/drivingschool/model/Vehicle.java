@@ -27,6 +27,8 @@ public class Vehicle {
     @Column(nullable = false, unique = true)
     private String licensePlate;
 
+    private Integer currentMileage = 0;
+
     private LocalDate lastTechnicalVisit;
 
     private LocalDate nextTechnicalVisit; // Critical date

@@ -22,6 +22,14 @@ services:
     networks:
       - mdsms-network
 
+  ai-service:
+    build:
+      context: ./ai-service
+      dockerfile: Dockerfile
+    networks:
+      - mdsms-network
+    # Port 8000 is internal to lan_net, not exposed to host for security
+
   db:
     image: postgres:15-alpine
     ports:

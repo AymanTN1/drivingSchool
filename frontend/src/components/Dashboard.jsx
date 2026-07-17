@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
+import PredictiveMaintenanceView from './PredictiveMaintenanceView';
 
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -577,6 +578,12 @@ export default function Dashboard({ authData, onLogout }) {
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'avis-moniteurs' ? 'white' : 'var(--text-muted)', background: activeTab === 'avis-moniteurs' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <Star size={16} /> Avis Clients (Confidentiel)
+              </button>
+              <button
+                onClick={() => setActiveTab('maintenance-ai')}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'maintenance-ai' ? 'white' : 'var(--text-muted)', background: activeTab === 'maintenance-ai' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
+              >
+                <Settings size={16} /> Maintenance IA
               </button>
               <button
                 className="sidebar-btn"
@@ -1333,6 +1340,11 @@ export default function Dashboard({ authData, onLogout }) {
               </div>
             )}
           </div>
+        )}
+
+        {/* ADMIN TAB: AI Predictive Maintenance */}
+        {activeTab === 'maintenance-ai' && (
+          <PredictiveMaintenanceView authData={authData} vehicles={vehicles} />
         )}
 
         {/* 2. ADMIN TAB: Staff registering form */}

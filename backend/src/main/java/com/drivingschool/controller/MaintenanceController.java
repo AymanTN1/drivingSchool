@@ -3,7 +3,7 @@ package com.drivingschool.controller;
 import com.drivingschool.dto.AiPredictionResponse;
 import com.drivingschool.model.MaintenanceRecord;
 import com.drivingschool.repository.MaintenanceRecordRepository;
-import com.drivingschool.service.PredictiveMaintenanceService;
+import com.drivingschool.service.AiPredictionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,7 +21,7 @@ public class MaintenanceController {
     private MaintenanceRecordRepository maintenanceRecordRepository;
 
     @Autowired
-    private PredictiveMaintenanceService predictiveMaintenanceService;
+    private AiPredictionService aiPredictionService;
 
     @GetMapping("/{vehicleId}/records")
     @PreAuthorize("hasRole('ADMIN') or hasRole('ASSISTANT')")
@@ -40,7 +40,7 @@ public class MaintenanceController {
     @GetMapping("/{vehicleId}/predict")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, AiPredictionResponse>> getAiPredictions(@PathVariable Long vehicleId) {
-        Map<String, AiPredictionResponse> predictions = predictiveMaintenanceService.getMaintenancePredictions(vehicleId);
+        Map<String, AiPredictionResponse> predictions = aiPredictionService.getMaintenancePredictions(vehicleId);
         return ResponseEntity.ok(predictions);
     }
 }

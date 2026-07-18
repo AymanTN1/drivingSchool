@@ -52,4 +52,13 @@ public class CandidateProfile {
     private String registrationContractPath;
 
     private LocalDate narsaExamDate; // If set, candidate is presented to the exam
+
+    // --- AI Behavioral Analysis Fields ---
+    private Integer theoreticalTestScore = 0; // 0-40
+    
+    private Integer classesAttended = 0;
+    
+    private Integer classesMissed = 0;
+    
+    private Integer instructorEvaluationScore = 0; // 1-5
 }

@@ -17,6 +17,19 @@ class PredictionResult(BaseModel):
     estimated_days_remaining: int
     recommendation: str
 
+class CandidateRiskRequest(BaseModel):
+    candidate_id: int
+    theoretical_test_score: int
+    classes_attended: int
+    classes_missed: int
+    instructor_evaluation_score: int
+
+class CandidateRiskResponse(BaseModel):
+    candidate_id: int
+    risk_score: float
+    risk_level: str
+    alert_message: str
+
 # Simulated ML Model thresholds (in real life, this would be trained on historical breakdown data)
 MAINTENANCE_THRESHOLDS = {
     "OIL_CHANGE": 10000,
@@ -71,6 +84,54 @@ async def predict_maintenance(data: VehicleData):
         )
         
     return predictions
+
+@app.post("/predict/candidate-risk", response_model=CandidateRiskResponse)
+async def predict_candidate_risk(data: CandidateRiskRequest):
+    # Base risk starts at 0.1
+    risk = 0.1
+    
+    # 1. Theoretical Test Score (Max 40)
+    # Below 30 is failing. The lower it is, the higher the risk.
+    if data.theoretical_test_score < 30:
+        risk += (30 - data.theoretical_test_score) * 0.03
+    else:
+        risk -= (data.theoretical_test_score - 30) * 0.01
+        
+    # 2. Absenteeism (Very critical indicator of dropping out)
+    total_classes = data.classes_attended + data.classes_missed
+    if total_classes > 0:
+        absentee_rate = data.classes_missed / total_classes
+        risk += absentee_rate * 0.5 # Up to +50% risk just for absenteeism
+        
+    # 3. Instructor Evaluation (1 to 5)
+    # 3 is average, <3 increases risk, >3 decreases risk
+    if data.instructor_evaluation_score > 0:
+        if data.instructor_evaluation_score < 3:
+            risk += (3 - data.instructor_evaluation_score) * 0.15
+        elif data.instructor_evaluation_score > 3:
+            risk -= (data.instructor_evaluation_score - 3) * 0.10
+            
+    risk = min(max(risk, 0.0), 1.0)
+    
+    if risk >= 0.75:
+        level = "CRITICAL"
+        msg = "Alerte Rouge : Très fort risque d'abandon ou d'échec. Contacter pour soutien immédiat."
+    elif risk >= 0.50:
+        level = "HIGH"
+        msg = "Risque Élevé : Attention requise. Proposer des leçons supplémentaires."
+    elif risk >= 0.25:
+        level = "MEDIUM"
+        msg = "Risque Modéré : Suivi normal."
+    else:
+        level = "LOW"
+        msg = "Bonne progression. Aucun risque détecté."
+        
+    return CandidateRiskResponse(
+        candidate_id=data.candidate_id,
+        risk_score=round(risk, 2),
+        risk_level=level,
+        alert_message=msg
+    )
 
 @app.get("/health")
 async def health_check():

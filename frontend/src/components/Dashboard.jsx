@@ -11,6 +11,7 @@ import {
 import { QRCodeSVG } from 'qrcode.react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import PredictiveMaintenanceView from './PredictiveMaintenanceView';
+import CandidateRiskView from './CandidateRiskView';
 
 import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
@@ -584,6 +585,12 @@ export default function Dashboard({ authData, onLogout }) {
                 style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'maintenance-ai' ? 'white' : 'var(--text-muted)', background: activeTab === 'maintenance-ai' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
               >
                 <Settings size={16} /> Maintenance IA
+              </button>
+              <button
+                onClick={() => setActiveTab('candidate-risk-ai')}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px 16px', borderRadius: '8px', color: activeTab === 'candidate-risk-ai' ? 'white' : 'var(--text-muted)', background: activeTab === 'candidate-risk-ai' ? 'rgba(255,255,255,0.08)' : 'none', textAlign: 'left', fontSize: '0.9rem' }}
+              >
+                <AlertTriangle size={16} /> Alertes Candidats IA
               </button>
               <button
                 className="sidebar-btn"
@@ -1345,6 +1352,11 @@ export default function Dashboard({ authData, onLogout }) {
         {/* ADMIN TAB: AI Predictive Maintenance */}
         {activeTab === 'maintenance-ai' && (
           <PredictiveMaintenanceView authData={authData} vehicles={vehicles} />
+        )}
+
+        {/* ADMIN TAB: AI Candidate Risk */}
+        {activeTab === 'candidate-risk-ai' && (
+          <CandidateRiskView authData={authData} candidates={candidates} />
         )}
 
         {/* 2. ADMIN TAB: Staff registering form */}

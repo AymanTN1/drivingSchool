@@ -229,7 +229,7 @@ jobs:
 
     - name: "🏷️ Extract metadata (tags, labels)"
       id: meta-backend
-      uses: docker/metadata-action@v5
+      uses: docker/metadata-action@v6
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}
         tags: |
@@ -246,7 +246,7 @@ jobs:
 
     - name: "🏷️ Extract metadata for AI Service"
       id: meta-ai
-      uses: docker/metadata-action@v5
+      uses: docker/metadata-action@v6
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_AI }}
         tags: |

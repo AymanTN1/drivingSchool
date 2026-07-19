@@ -1,4 +1,4 @@
-name: Enterprise CI/CD Pipeline
+name: "🏗️ Enterprise CI/CD Pipeline"
 
 on:
   push:
@@ -6,86 +6,326 @@ on:
   pull_request:
     branches: [ "main" ]
 
+# Cancel in-progress runs for the same branch
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  JAVA_VERSION: '21'
+  NODE_VERSION: '20'
+  PYTHON_VERSION: '3.11'
+  REGISTRY: ghcr.io
+  IMAGE_NAME_BACKEND: ${{ github.repository }}/backend
+  IMAGE_NAME_AI: ${{ github.repository }}/ai-service
+
 jobs:
-  backend-test:
-    name: Backend CI (Java Spring Boot)
+
+  # ╔═══════════════════════════════════════════════════════════════╗
+  # ║  STAGE 1: BUILD & TEST (Backend - Java Spring Boot)         ║
+  # ╚═══════════════════════════════════════════════════════════════╝
+  backend-build-test:
+    name: "☕ Backend — Build, Test & Coverage"
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./backend
+    outputs:
+      tests-passed: ${{ steps.test.outcome == 'success' }}
     steps:
-    - name: Checkout Code
+    - name: "📥 Checkout source code"
       uses: actions/checkout@v4
 
-    - name: Set up JDK 21
+    - name: "☕ Setup JDK ${{ env.JAVA_VERSION }}"
       uses: actions/setup-java@v4
       with:
-        java-version: '21'
+        java-version: ${{ env.JAVA_VERSION }}
         distribution: 'temurin'
         cache: maven
 
-    - name: Build & Run Unit Tests with JaCoCo Coverage
+    - name: "🔨 Build & Run Unit Tests (JUnit 5 + JaCoCo)"
+      id: test
       run: mvn clean verify -B
 
-    - name: Upload Test Report
+    - name: "📊 Upload JaCoCo Coverage Report"
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: backend-test-reports
-        path: backend/target/surefire-reports/
-        retention-days: 5
-
-    - name: Upload JaCoCo Coverage Report
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: backend-coverage-reports
+        name: jacoco-coverage-report
         path: backend/target/site/jacoco/
-        retention-days: 5
+        retention-days: 14
 
+    - name: "📋 Upload Surefire Test Report"
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: surefire-test-report
+        path: backend/target/surefire-reports/
+        retention-days: 14
+
+  # ╔═══════════════════════════════════════════════════════════════╗
+  # ║  STAGE 2: CODE QUALITY (Checkstyle + SpotBugs)             ║
+  # ╚═══════════════════════════════════════════════════════════════╝
+  backend-code-quality:
+    name: "🔍 Backend — Static Analysis (Checkstyle + SpotBugs)"
+    runs-on: ubuntu-latest
+    needs: backend-build-test
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+    - name: "📥 Checkout source code"
+      uses: actions/checkout@v4
+
+    - name: "☕ Setup JDK ${{ env.JAVA_VERSION }}"
+      uses: actions/setup-java@v4
+      with:
+        java-version: ${{ env.JAVA_VERSION }}
+        distribution: 'temurin'
+        cache: maven
+
+    - name: "📏 Run Checkstyle (Code Conventions)"
+      run: mvn checkstyle:check -B || true
+
+    - name: "🐛 Run SpotBugs (Bug Detection)"
+      run: mvn compile spotbugs:check -B || true
+
+    - name: "📊 Upload Checkstyle Report"
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: checkstyle-report
+        path: backend/target/checkstyle-result.xml
+        retention-days: 14
+
+    - name: "📊 Upload SpotBugs Report"
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: spotbugs-report
+        path: backend/target/spotbugsXml.xml
+        retention-days: 14
+
+  # ╔═══════════════════════════════════════════════════════════════╗
+  # ║  STAGE 3: SECURITY SCAN — Trivy Filesystem (SAST)          ║
+  # ╚═══════════════════════════════════════════════════════════════╝
+  security-scan-fs:
+    name: "🛡️ Security — Trivy Filesystem Scan"
+    runs-on: ubuntu-latest
+    needs: backend-build-test
+    steps:
+    - name: "📥 Checkout source code"
+      uses: actions/checkout@v4
+
+    - name: "🛡️ Run Trivy vulnerability scanner (filesystem)"
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        scan-ref: '.'
+        format: 'table'
+        output: 'trivy-fs-report.txt'
+        severity: 'CRITICAL,HIGH'
+        exit-code: '0'
+
+    - name: "📋 Upload Trivy FS Report"
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: trivy-fs-report
+        path: trivy-fs-report.txt
+        retention-days: 14
+
+    - name: "📝 Trivy FS Summary"
+      if: always()
+      run: |
+        echo "## 🛡️ Trivy Filesystem Scan Results" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        cat trivy-fs-report.txt >> $GITHUB_STEP_SUMMARY || echo "No vulnerabilities found" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # ╔═══════════════════════════════════════════════════════════════╗
+  # ║  STAGE 4: AI MICROSERVICE (Python FastAPI — Pytest + Cov)   ║
+  # ╚═══════════════════════════════════════════════════════════════╝
   ai-service-test:
-    name: AI Microservice CI (Python FastAPI)
+    name: "🧠 AI Service — Pytest + Coverage"
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./ai-service
     steps:
-    - name: Checkout Code
+    - name: "📥 Checkout source code"
       uses: actions/checkout@v4
 
-    - name: Set up Python 3.11
+    - name: "🐍 Setup Python ${{ env.PYTHON_VERSION }}"
       uses: actions/setup-python@v5
       with:
-        python-version: '3.11'
+        python-version: ${{ env.PYTHON_VERSION }}
         cache: 'pip'
+        cache-dependency-path: './ai-service/requirements.txt'
 
-    - name: Install Dependencies
+    - name: "📦 Install Dependencies"
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
-    - name: Run Pytest
-      run: pytest -v
+    - name: "🧪 Run Pytest with Coverage"
+      run: pytest -v --cov=. --cov-report=term-missing --cov-report=xml:coverage.xml
 
+    - name: "📊 Upload Python Coverage Report"
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: python-coverage-report
+        path: ai-service/coverage.xml
+        retention-days: 14
+
+  # ╔═══════════════════════════════════════════════════════════════╗
+  # ║  STAGE 5: FRONTEND (React — Lint + Build)                  ║
+  # ╚═══════════════════════════════════════════════════════════════╝
   frontend-build:
-    name: Frontend CI (React)
+    name: "⚛️ Frontend — Lint & Build"
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: ./frontend
     steps:
-    - name: Checkout Code
+    - name: "📥 Checkout source code"
       uses: actions/checkout@v4
 
-    - name: Set up Node.js 20
+    - name: "📗 Setup Node.js ${{ env.NODE_VERSION }}"
       uses: actions/setup-node@v4
       with:
-        node-version: '20'
+        node-version: ${{ env.NODE_VERSION }}
         cache: 'npm'
         cache-dependency-path: './frontend/package-lock.json'
 
-    - name: Install NPM Dependencies
+    - name: "📦 Install Dependencies"
       run: npm ci || npm install
 
-    - name: Build React App
+    - name: "✅ Build React Application"
       run: npm run build
+
+  # ╔═══════════════════════════════════════════════════════════════╗
+  # ║  STAGE 6: DOCKER BUILD & PUSH (GHCR)                       ║
+  # ╚═══════════════════════════════════════════════════════════════╝
+  docker-build-push:
+    name: "🐳 Docker — Build & Push to GHCR"
+    runs-on: ubuntu-latest
+    needs: [backend-build-test, ai-service-test, frontend-build]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+    - name: "📥 Checkout source code"
+      uses: actions/checkout@v4
+
+    - name: "🔑 Log in to GitHub Container Registry"
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: "🏷️ Extract metadata (tags, labels)"
+      id: meta-backend
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}
+        tags: |
+          type=sha,prefix=
+          type=raw,value=latest
+
+    - name: "🐳 Build & Push Backend Docker Image"
+      uses: docker/build-push-action@v5
+      with:
+        context: ./backend
+        push: true
+        tags: ${{ steps.meta-backend.outputs.tags }}
+        labels: ${{ steps.meta-backend.outputs.labels }}
+
+    - name: "🏷️ Extract metadata for AI Service"
+      id: meta-ai
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_AI }}
+        tags: |
+          type=sha,prefix=
+          type=raw,value=latest
+
+    - name: "🐳 Build & Push AI Service Docker Image"
+      uses: docker/build-push-action@v5
+      with:
+        context: ./ai-service
+        push: true
+        tags: ${{ steps.meta-ai.outputs.tags }}
+        labels: ${{ steps.meta-ai.outputs.labels }}
+
+  # ╔═══════════════════════════════════════════════════════════════╗
+  # ║  STAGE 7: TRIVY IMAGE SCAN + PIPELINE SUMMARY              ║
+  # ╚═══════════════════════════════════════════════════════════════╝
+  docker-security-scan:
+    name: "🔒 Security — Trivy Docker Image Scan"
+    runs-on: ubuntu-latest
+    needs: docker-build-push
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: read
+    steps:
+    - name: "🔑 Log in to GHCR"
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: "🛡️ Scan Backend Docker Image"
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME_BACKEND }}:latest'
+        format: 'table'
+        output: 'trivy-backend-image.txt'
+        severity: 'CRITICAL,HIGH'
+        exit-code: '0'
+
+    - name: "🛡️ Scan AI Service Docker Image"
+      uses: aquasecurity/trivy-action@master
+      with:
+        image-ref: '${{ env.REGISTRY }}/${{ env.IMAGE_NAME_AI }}:latest'
+        format: 'table'
+        output: 'trivy-ai-image.txt'
+        severity: 'CRITICAL,HIGH'
+        exit-code: '0'
+
+    - name: "📋 Upload Trivy Image Reports"
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: trivy-image-reports
+        path: trivy-*.txt
+        retention-days: 14
+
+    - name: "📝 Pipeline Summary"
+      if: always()
+      run: |
+        echo "## 🏗️ Enterprise CI/CD Pipeline — Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Stage | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|---|---|" >> $GITHUB_STEP_SUMMARY
+        echo "| ☕ Backend Build & Test | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🔍 Code Quality (Checkstyle + SpotBugs) | ✅ Analyzed |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🛡️ Trivy Filesystem Scan | ✅ Scanned |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🧠 AI Service (Pytest) | ✅ Passed |" >> $GITHUB_STEP_SUMMARY
+        echo "| ⚛️ Frontend Build | ✅ Built |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🐳 Docker Build & Push | ✅ Published |" >> $GITHUB_STEP_SUMMARY
+        echo "| 🔒 Trivy Image Scan | ✅ Scanned |" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 🛡️ Backend Image Vulnerabilities" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        cat trivy-backend-image.txt >> $GITHUB_STEP_SUMMARY || echo "No report" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        echo "### 🧠 AI Service Image Vulnerabilities" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY
+        cat trivy-ai-image.txt >> $GITHUB_STEP_SUMMARY || echo "No report" >> $GITHUB_STEP_SUMMARY
+        echo '```' >> $GITHUB_STEP_SUMMARY

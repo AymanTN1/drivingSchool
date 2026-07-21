@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, CheckCircle, Clock, Tool, Settings, Loader2 } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Clock, Wrench, Settings, Loader2 } from 'lucide-react';
 import API_BASE from '../api';
 
 export default function PredictiveMaintenanceView({ authData, vehicles }) {

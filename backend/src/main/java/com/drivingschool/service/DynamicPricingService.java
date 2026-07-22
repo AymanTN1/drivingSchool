@@ -155,9 +155,9 @@ public class DynamicPricingService {
         resp.setBase_price(req.getBase_price());
         resp.setFinal_price(finalPrice);
         resp.setMultiplier(multiplier);
-        resp.setDemand_tier(tier);
+        resp.setSurge_level(tier);
+        resp.setDiscount_percent(Math.round((multiplier - 1.0) * 100.0 * 100.0) / 100.0);
         resp.setExplanation(explanation);
-        resp.setHour_of_day(req.getHour_of_day());
 
         return resp;
     }

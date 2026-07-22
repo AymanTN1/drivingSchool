@@ -6,7 +6,7 @@ import {
   UserPlus, Car, DollarSign, Calendar, AlertCircle, FileText, CheckCircle2, Star,
   TrendingUp, Users, Shield, LogOut, CheckSquare, PlusCircle, Printer, X, ShieldAlert,
   Fuel, Gauge, AlertTriangle, Activity, Banknote, Clock, Award, Phone, ArrowRight,
-  ClipboardList, Scan, QrCode, Monitor, CalendarDays, Edit2, BookOpen, XCircle, MessageSquare, Loader2
+  ClipboardList, Scan, QrCode, Monitor, CalendarDays, Edit2, BookOpen, XCircle, MessageSquare, Loader2, Settings
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Html5QrcodeScanner } from 'html5-qrcode';

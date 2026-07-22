@@ -13,6 +13,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
+import org.springframework.cache.annotation.Cacheable;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -702,6 +703,7 @@ public class DashboardController {
     // --- ADMIN: Decision Analytics Dashboard ---
 
     @PreAuthorize("hasRole('ADMIN')")
+    @Cacheable("adminAnalytics")
     @GetMapping("/admin/analytics")
     public ResponseEntity<?> getAnalytics() {
         Map<String, Object> data = new HashMap<>();

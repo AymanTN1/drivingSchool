@@ -126,96 +126,79 @@ export default function Dashboard({ authData, onLogout }) {
         .then(data => setAnalytics(data))
         .catch(err => console.log('Error fetching analytics', err))
         .finally(() => setLoading(false));
-
-      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/fleet/analytics`, { headers })
-        .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-        .then(data => setFleetAnalytics(data))
-        .catch(err => console.log('Error fetching fleet analytics', err));
-
-      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/payroll/moniteurs`, { headers })
-        .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-        .then(data => setPayrollData(data))
-        .catch(err => console.log('Error fetching payroll', err));
-
-      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/payroll/slips`, { headers })
-        .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-        .then(data => setPaySlips(data))
-        .catch(err => console.log('Error fetching pay slips', err));
-
-      // ADMIN: fetch moniteur ratings report (confidential)
-      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/admin/moniteurs/ratings-report`, { headers })
-        .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-        .then(data => setMoniteurRatingsReport(data))
-        .catch(err => console.log('Error fetching ratings report', err));
     } else if (role === 'ASSISTANT') {
-      // Fetch candidates list
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/candidates`, { headers })
         .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
         .then(data => setCandidates(data))
-        .catch(err => console.log('Error fetching candidates', err));
-
-      // Fetch transaction list
-      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/caisse`, { headers })
-        .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-        .then(data => setTransactions(data))
-        .catch(err => console.log('Error fetching caisse', err));
-
-      // Fetch alerts list
-      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/alerts`, { headers })
-        .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-        .then(data => setAlerts(data))
-        .catch(err => console.log('Error fetching alerts', err))
+        .catch(err => console.log('Error fetching candidates', err))
         .finally(() => setLoading(false));
-
-      // Fetch support lessons & stats
-      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/support-lessons`, { headers })
-        .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-        .then(data => setSupportLessons(data))
-        .catch(err => console.log('Error fetching support lessons', err));
-
-      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/support-lessons/stats`, { headers })
-        .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-        .then(data => setSupportStats(data))
-        .catch(err => console.log('Error fetching support stats', err));
-    }
-
-    // Fetch CRM prospects and Calendar for ADMIN and ASSISTANT
-    if (role === 'ADMIN' || role === 'ASSISTANT') {
-      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/prospects`, { headers })
-        .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-        .then(data => setCrmProspects(data))
-        .catch(err => console.log('Error fetching prospects', err));
-        
-      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/lessons`, { headers })
-        .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-        .then(data => setAllLessons(data))
-        .catch(err => console.log('Error fetching all lessons', err));
     } else if (role === 'MONITEUR') {
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/moniteur/lessons`, { headers })
         .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
         .then(data => setMoniteurLessons(data))
         .catch(err => console.log('Error fetching moniteur lessons', err))
         .finally(() => setLoading(false));
-
-      // Moniteur: also fetch their support lessons
-      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/moniteur/support-lessons`, { headers })
-        .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-        .then(data => setSupportLessons(data))
-        .catch(err => console.log('Error fetching moniteur support lessons', err));
     } else if (role === 'CANDIDATE') {
       fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/candidate/lessons`, { headers })
         .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
         .then(data => setCandidateData(data))
         .catch(err => console.log('Error fetching candidate data', err))
         .finally(() => setLoading(false));
-
-      // Candidate: also fetch their support lessons
-      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/candidate/support-lessons`, { headers })
-        .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-        .then(data => setSupportLessons(data))
-        .catch(err => console.log('Error fetching candidate support lessons', err));
     }
   };
+
+  // On-demand lazy loading when switching tabs
+  useEffect(() => {
+    if (!token || !activeTab) return;
+    const headers = { 'Authorization': `Bearer ${token}` };
+
+    if (activeTab === 'fleet-fuel' && !fleetAnalytics) {
+      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/fleet/analytics`, { headers })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => data && setFleetAnalytics(data))
+        .catch(err => console.log('Error fetching fleet analytics', err));
+    } else if (activeTab === 'payroll' && payrollData.length === 0) {
+      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/payroll/moniteurs`, { headers })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setPayrollData(data))
+        .catch(err => console.log('Error fetching payroll', err));
+
+      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/payroll/slips`, { headers })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setPaySlips(data))
+        .catch(err => console.log('Error fetching pay slips', err));
+    } else if (activeTab === 'avis-moniteurs' && !moniteurRatingsReport) {
+      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/admin/moniteurs/ratings-report`, { headers })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => data && setMoniteurRatingsReport(data))
+        .catch(err => console.log('Error fetching ratings report', err));
+    } else if (activeTab === 'crm' && crmProspects.length === 0) {
+      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/prospects`, { headers })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setCrmProspects(data))
+        .catch(err => console.log('Error fetching prospects', err));
+    } else if (activeTab === 'calendar-planning' && allLessons.length === 0) {
+      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/lessons`, { headers })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setAllLessons(data))
+        .catch(err => console.log('Error fetching all lessons', err));
+    } else if (activeTab === 'caisse' && transactions.length === 0) {
+      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/caisse`, { headers })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setTransactions(data))
+        .catch(err => console.log('Error fetching caisse', err));
+    } else if (activeTab === 'alerts' && alerts.length === 0) {
+      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/alerts`, { headers })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setAlerts(data))
+        .catch(err => console.log('Error fetching alerts', err));
+    } else if (activeTab === 'support-lessons' && supportLessons.length === 0) {
+      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/support-lessons`, { headers })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setSupportLessons(data))
+        .catch(err => console.log('Error fetching support lessons', err));
+    }
+  }, [activeTab, token]);
 
   const triggerFeedback = (type, msg) => {
     setFeedback({ type, msg });

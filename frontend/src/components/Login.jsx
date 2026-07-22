@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogIn, ArrowLeft, Lock, User, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { LogIn, ArrowLeft, Lock, User, AlertCircle, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 export default function Login({ onLoginSuccess, onBackClick }) {
   const [username, setUsername] = useState('');
@@ -192,10 +192,14 @@ export default function Login({ onLoginSuccess, onBackClick }) {
           <button 
             type="submit" 
             className="btn btn-primary" 
-            style={{ width: '100%', padding: '14px', fontSize: '1rem', cursor: 'pointer' }}
+            style={{ width: '100%', padding: '14px', fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
             disabled={loading}
           >
-            {loading ? 'Connexion en cours...' : 'Se connecter'}
+            {loading ? (
+              <>
+                <Loader2 size={18} className="animate-spin" /> Connexion en cours (Réveil du serveur...)...
+              </>
+            ) : 'Se connecter'}
           </button>
         </form>
 

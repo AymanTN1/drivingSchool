@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Monitor, Phone, MapPin, CheckCircle, Clock, AlertTriangle, ArrowRight, User, Star, Award, ThumbsUp, ChevronLeft, ChevronRight } from 'lucide-react';
 
-export default function LandingPage({ onLoginClick, user }) {
+export default function LandingPage({ onLoginClick, onLogout, user }) {
   const [pcStatus, setPcStatus] = useState({
     totalPosts: 15,
     occupiedCount: 6,
@@ -77,13 +77,23 @@ export default function LandingPage({ onLoginClick, user }) {
               )}
             </a>
             {user ? (
-              <button
-                onClick={onLoginClick}
-                className="btn btn-primary"
-                style={{ padding: '8px 20px', fontSize: '0.9rem' }}
-              >
-                Mon Espace ({user.fullName})
-              </button>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <button
+                  onClick={onLoginClick}
+                  className="btn btn-primary"
+                  style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+                >
+                  Mon Espace ({user.fullName})
+                </button>
+                <button
+                  onClick={onLogout}
+                  className="btn"
+                  style={{ padding: '8px 12px', fontSize: '0.85rem', background: 'rgba(239, 68, 68, 0.15)', color: '#fca5a5', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', cursor: 'pointer' }}
+                  title="Se Déconnecter"
+                >
+                  🚪 Déconnexion
+                </button>
+              </div>
             ) : (
               <button
                 onClick={onLoginClick}

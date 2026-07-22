@@ -6,7 +6,7 @@ import {
   UserPlus, Car, DollarSign, Calendar, AlertCircle, FileText, CheckCircle2, Star,
   TrendingUp, Users, Shield, LogOut, CheckSquare, PlusCircle, Printer, X, ShieldAlert,
   Fuel, Gauge, AlertTriangle, Activity, Banknote, Clock, Award, Phone, ArrowRight,
-  ClipboardList, Scan, QrCode, Monitor, CalendarDays, Edit2, BookOpen, XCircle, MessageSquare
+  ClipboardList, Scan, QrCode, Monitor, CalendarDays, Edit2, BookOpen, XCircle, MessageSquare, Loader2
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
@@ -734,6 +734,34 @@ export default function Dashboard({ authData, onLogout }) {
             fontWeight: 500
           }}>
             {feedback.msg}
+          </div>
+        )}
+
+        {/* Loading State for Analytics */}
+        {activeTab === 'analytics' && loading && !analytics && (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: '16px', color: 'var(--text-muted)' }}>
+            <Loader2 size={48} className="animate-spin" style={{ color: 'var(--accent)' }} />
+            <h3 style={{ fontSize: '1.2rem', color: 'white' }}>Connexion au serveur & chargement des données...</h3>
+            <p style={{ fontSize: '0.85rem' }}>Si le serveur était en veille, le démarrage peut prendre quelques secondes.</p>
+          </div>
+        )}
+
+        {/* Fallback Error State for Analytics */}
+        {activeTab === 'analytics' && !loading && !analytics && (
+          <div className="card" style={{ maxWidth: '600px', margin: '40px auto', textAlign: 'center', padding: '32px' }}>
+            <AlertTriangle size={48} color="var(--warning)" style={{ margin: '0 auto 16px' }} />
+            <h3 style={{ fontSize: '1.25rem', color: 'white', marginBottom: '8px' }}>Impossible de charger les données d'analyse</h3>
+            <p style={{ color: 'var(--text-muted)', marginBottom: '24px', fontSize: '0.9rem' }}>
+              Le serveur backend est en cours de démarrage ou la connexion a rencontré un problème.
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button onClick={refreshData} className="btn btn-primary" style={{ padding: '10px 20px', cursor: 'pointer' }}>
+                🔄 Réessayer
+              </button>
+              <button onClick={onLogout} className="btn" style={{ padding: '10px 20px', background: 'rgba(239, 68, 68, 0.15)', color: '#fca5a5', border: '1px solid rgba(239, 68, 68, 0.3)', cursor: 'pointer' }}>
+                🚪 Se déconnecter
+              </button>
+            </div>
           </div>
         )}
 

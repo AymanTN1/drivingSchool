@@ -20,7 +20,9 @@ import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin from '@fullcalendar/interaction';
 
 export default function Dashboard({ authData, onLogout }) {
-  const { token, role, fullName } = authData;
+  const token = authData?.token || authData?.accessToken || authData?.jwt;
+  const role = authData?.role;
+  const fullName = authData?.fullName || authData?.username || 'Utilisateur';
   const [activeTab, setActiveTab] = useState('');
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState({ type: '', msg: '' });
@@ -80,6 +82,10 @@ export default function Dashboard({ authData, onLogout }) {
 
   // Fetching context data based on Role
   useEffect(() => {
+    if (!token) {
+      onLogout();
+      return;
+    }
     // Set initial tab based on role
     if (role === 'ADMIN') setActiveTab('analytics');
     else if (role === 'ASSISTANT') setActiveTab('candidates');
@@ -88,7 +94,7 @@ export default function Dashboard({ authData, onLogout }) {
 
     fetchDropdowns();
     refreshData();
-  }, [role]);
+  }, [role, token]);
 
   const fetchDropdowns = () => {
     // Fetch instructors list for assignments
@@ -776,18 +782,18 @@ export default function Dashboard({ authData, onLogout }) {
             {/* ── KPI Grid (responsive, 8 cards) ── */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '16px', marginBottom: '32px' }}>
               {[
-                { label: 'Candidats Inscrits', value: analytics.kpi.totalCandidates, icon: <Users size={20} />, color: '#d4af37', bg: 'rgba(212,175,55,0.1)' },
-                { label: 'Véhicules Actifs', value: analytics.kpi.totalVehicles, icon: <Car size={20} />, color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
-                { label: 'Recettes Caisse', value: `${analytics.financesOverview.recettes} DH`, icon: <DollarSign size={20} />, color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
-                { label: 'Reliquats Restants', value: `${analytics.financesOverview.reliquats} DH`, icon: <AlertCircle size={20} />, color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
-                { label: 'Rev. Soutien Encaissé', value: `${analytics.supportFinance?.paidRevenue ?? analytics.financesOverview.supportRevenue ?? 0} DH`, icon: <BookOpen size={20} />, color: '#a78bfa', bg: 'rgba(139,92,246,0.1)' },
-                { label: 'Séances Terminées', value: analytics.kpi.completedSessions ?? analytics.kpi.totalSupportLessons ?? 0, icon: <CheckCircle2 size={20} />, color: '#22c55e', bg: 'rgba(34,197,94,0.08)' },
-                { label: 'Heures Livrées', value: `${analytics.kpi.totalHoursDelivered ?? 0}h`, icon: <Clock size={20} />, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
-                { label: 'Revenus Non Encaissés', value: `${analytics.supportFinance?.unpaidPotential ?? 0} DH`, icon: <AlertTriangle size={20} />, color: '#f97316', bg: 'rgba(249,115,22,0.1)' },
-                { label: 'Séances Réservées', value: analytics.kpi.bookedSessions ?? 0, icon: <Calendar size={20} />, color: '#60a5fa', bg: 'rgba(96,165,250,0.1)' },
-                { label: 'Taux Annulation', value: `${analytics.kpi.cancellationRate ?? 0}%`, icon: <XCircle size={20} />, color: '#ef4444', bg: 'rgba(239,68,68,0.08)' },
-                { label: 'Durée Moy. Séance', value: `${analytics.kpi.avgSessionDuration ?? 0} min`, icon: <Activity size={20} />, color: '#818cf8', bg: 'rgba(129,140,248,0.1)' },
-                { label: 'Revenus Projetés', value: `${analytics.supportFinance?.projectedFromBooked ?? 0} DH`, icon: <TrendingUp size={20} />, color: '#4ade80', bg: 'rgba(74,222,128,0.1)' },
+                { label: 'Candidats Inscrits', value: analytics?.kpi?.totalCandidates ?? 0, icon: <Users size={20} />, color: '#d4af37', bg: 'rgba(212,175,55,0.1)' },
+                { label: 'Véhicules Actifs', value: analytics?.kpi?.totalVehicles ?? 0, icon: <Car size={20} />, color: '#22c55e', bg: 'rgba(34,197,94,0.1)' },
+                { label: 'Recettes Caisse', value: `${analytics?.financesOverview?.recettes ?? 0} DH`, icon: <DollarSign size={20} />, color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
+                { label: 'Reliquats Restants', value: `${analytics?.financesOverview?.reliquats ?? 0} DH`, icon: <AlertCircle size={20} />, color: '#ef4444', bg: 'rgba(239,68,68,0.1)' },
+                { label: 'Rev. Soutien Encaissé', value: `${analytics?.supportFinance?.paidRevenue ?? analytics?.financesOverview?.supportRevenue ?? 0} DH`, icon: <BookOpen size={20} />, color: '#a78bfa', bg: 'rgba(139,92,246,0.1)' },
+                { label: 'Séances Terminées', value: analytics?.kpi?.completedSessions ?? analytics?.kpi?.totalSupportLessons ?? 0, icon: <CheckCircle2 size={20} />, color: '#22c55e', bg: 'rgba(34,197,94,0.08)' },
+                { label: 'Heures Livrées', value: `${analytics?.kpi?.totalHoursDelivered ?? 0}h`, icon: <Clock size={20} />, color: '#f59e0b', bg: 'rgba(245,158,11,0.1)' },
+                { label: 'Revenus Non Encaissés', value: `${analytics?.supportFinance?.unpaidPotential ?? 0} DH`, icon: <AlertTriangle size={20} />, color: '#f97316', bg: 'rgba(249,115,22,0.1)' },
+                { label: 'Séances Réservées', value: analytics?.kpi?.bookedSessions ?? 0, icon: <Calendar size={20} />, color: '#60a5fa', bg: 'rgba(96,165,250,0.1)' },
+                { label: 'Taux Annulation', value: `${analytics?.kpi?.cancellationRate ?? 0}%`, icon: <XCircle size={20} />, color: '#ef4444', bg: 'rgba(239,68,68,0.08)' },
+                { label: 'Durée Moy. Séance', value: `${analytics?.kpi?.avgSessionDuration ?? 0} min`, icon: <Activity size={20} />, color: '#818cf8', bg: 'rgba(129,140,248,0.1)' },
+                { label: 'Revenus Projetés', value: `${analytics?.supportFinance?.projectedFromBooked ?? 0} DH`, icon: <TrendingUp size={20} />, color: '#4ade80', bg: 'rgba(74,222,128,0.1)' },
               ].map((kpi, i) => (
                 <div key={i} className="card" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '16px' }}>
                   <div style={{ padding: '10px', borderRadius: '10px', background: kpi.bg, color: kpi.color, flexShrink: 0 }}>{kpi.icon}</div>
@@ -809,7 +815,7 @@ export default function Dashboard({ authData, onLogout }) {
                 </h3>
                 <div style={{ height: '260px' }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={analytics.registrationsDemand}>
+                    <BarChart data={analytics?.registrationsDemand ?? []}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                       <XAxis dataKey="name" stroke="var(--text-muted)" />
                       <YAxis stroke="var(--text-muted)" />
@@ -827,7 +833,7 @@ export default function Dashboard({ authData, onLogout }) {
                 </h3>
                 <div style={{ height: '260px' }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={analytics.financeTrends}>
+                    <LineChart data={analytics?.financeTrends ?? []}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                       <XAxis dataKey="name" stroke="var(--text-muted)" />
                       <YAxis stroke="var(--text-muted)" />
@@ -845,7 +851,7 @@ export default function Dashboard({ authData, onLogout }) {
                 </h3>
                 <div style={{ height: '260px' }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={analytics.examSchedules}>
+                    <BarChart data={analytics?.examSchedules ?? []}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                       <XAxis dataKey="name" stroke="var(--text-muted)" />
                       <YAxis stroke="var(--text-muted)" />
@@ -866,8 +872,8 @@ export default function Dashboard({ authData, onLogout }) {
                     <PieChart>
                       <Pie
                         data={[
-                          { name: 'Revenus Encaissés', value: analytics.financesOverview.recettes },
-                          { name: 'Reliquats à Recevoir', value: analytics.financesOverview.reliquats }
+                          { name: 'Revenus Encaissés', value: analytics?.financesOverview?.recettes ?? 0 },
+                          { name: 'Reliquats à Recevoir', value: analytics?.financesOverview?.reliquats ?? 0 }
                         ]}
                         cx="50%"
                         cy="50%"
@@ -1273,10 +1279,10 @@ export default function Dashboard({ authData, onLogout }) {
             {/* Finance summary mini-cards */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
               {[
-                { label: 'Revenus Soutien Encaissés', value: `${analytics.supportFinance.paidRevenue} DH`, color: '#22c55e', icon: '✅', count: `${analytics.supportFinance.paidCount} séances payées` },
-                { label: 'Restant à Encaisser', value: `${analytics.supportFinance.unpaidPotential} DH`, color: '#f97316', icon: '⏳', count: `${analytics.supportFinance.unpaidCount} séances non payées` },
-                { label: 'Revenus Futurs Projetés', value: `${analytics.supportFinance.projectedFromBooked} DH`, color: '#60a5fa', icon: '📅', count: `des séances réservées` },
-                { label: 'Prix Moyen par Séance', value: `${analytics.supportFinance.avgPricePerSession} DH`, color: '#a78bfa', icon: '📊', count: `sur séances terminées` },
+                { label: 'Revenus Soutien Encaissés', value: `${analytics?.supportFinance?.paidRevenue ?? 0} DH`, color: '#22c55e', icon: '✅', count: `${analytics?.supportFinance?.paidCount ?? 0} séances payées` },
+                { label: 'Restant à Encaisser', value: `${analytics?.supportFinance?.unpaidPotential ?? 0} DH`, color: '#f97316', icon: '⏳', count: `${analytics?.supportFinance?.unpaidCount ?? 0} séances non payées` },
+                { label: 'Revenus Futurs Projetés', value: `${analytics?.supportFinance?.projectedFromBooked ?? 0} DH`, color: '#60a5fa', icon: '📅', count: `des séances réservées` },
+                { label: 'Prix Moyen par Séance', value: `${analytics?.supportFinance?.avgPricePerSession ?? 0} DH`, color: '#a78bfa', icon: '📊', count: `sur séances terminées` },
               ].map((c, i) => (
                 <div key={i} className="card" style={{ padding: '16px', borderLeft: `3px solid ${c.color}` }}>
                   <div style={{ fontSize: '1.4rem', marginBottom: '6px' }}>{c.icon}</div>

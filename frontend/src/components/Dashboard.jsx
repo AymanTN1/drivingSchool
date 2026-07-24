@@ -79,71 +79,49 @@ export default function Dashboard({ authData, onLogout }) {
   // Candidate: progression report (lazy-loaded)
   const [progression, setProgression] = useState(null);
   const [progressionLoading, setProgressionLoading] = useState(false);
+  const [loadingStatusText, setLoadingStatusText] = useState("Connexion au serveur & chargement des données...");
 
-  // Fetching context data based on Role
-  useEffect(() => {
-    if (!token) {
-      onLogout();
-      return;
+  const fetchWithRetry = async (url, options, maxRetries = 3) => {
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        if (attempt > 1) {
+          setLoadingStatusText(`Réveil du serveur backend en cours (Tentative ${attempt}/${maxRetries}... Merci de patienter ~10s)`);
+          await new Promise(resolve => setTimeout(resolve, 2500));
+        }
+        const res = await fetch(url, options);
+        if (res.ok) {
+          return await res.json();
+        }
+      } catch (err) {
+        console.log(`Attempt ${attempt} failed for ${url}`, err);
+      }
     }
-    // Set initial tab based on role
-    if (role === 'ADMIN') setActiveTab('analytics');
-    else if (role === 'ASSISTANT') setActiveTab('candidates');
-    else if (role === 'MONITEUR') setActiveTab('moniteur-lessons');
-    else if (role === 'CANDIDATE') setActiveTab('candidate-progress');
-
-    fetchDropdowns();
-    refreshData();
-  }, [role, token]);
-
-  const fetchDropdowns = () => {
-    // Fetch instructors list for assignments
-    fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/admin/users`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-      .then(data => {
-        const mons = data.filter(u => u.role === 'MONITEUR');
-        setMoniteurs(mons);
-      })
-      .catch(err => console.log('Error fetching moniteurs', err));
-
-    fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/fleet`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    })
-      .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-      .then(data => setVehicles(data))
-      .catch(err => console.log('Error fetching fleet', err));
+    throw new Error("Impossible de se connecter au serveur après plusieurs tentatives.");
   };
 
-  const refreshData = () => {
+  const refreshData = async () => {
     setLoading(true);
+    setLoadingStatusText("Connexion au serveur & chargement des données...");
     const headers = { 'Authorization': `Bearer ${token}` };
 
-    if (role === 'ADMIN') {
-      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/admin/analytics`, { headers })
-        .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-        .then(data => setAnalytics(data))
-        .catch(err => console.log('Error fetching analytics', err))
-        .finally(() => setLoading(false));
-    } else if (role === 'ASSISTANT') {
-      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/candidates`, { headers })
-        .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-        .then(data => setCandidates(data))
-        .catch(err => console.log('Error fetching candidates', err))
-        .finally(() => setLoading(false));
-    } else if (role === 'MONITEUR') {
-      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/moniteur/lessons`, { headers })
-        .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-        .then(data => setMoniteurLessons(data))
-        .catch(err => console.log('Error fetching moniteur lessons', err))
-        .finally(() => setLoading(false));
-    } else if (role === 'CANDIDATE') {
-      fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/candidate/lessons`, { headers })
-        .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
-        .then(data => setCandidateData(data))
-        .catch(err => console.log('Error fetching candidate data', err))
-        .finally(() => setLoading(false));
+    try {
+      if (role === 'ADMIN') {
+        const data = await fetchWithRetry(`${import.meta.env.VITE_API_URL ?? ""}/api/admin/analytics`, { headers });
+        setAnalytics(data);
+      } else if (role === 'ASSISTANT') {
+        const data = await fetchWithRetry(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/candidates`, { headers });
+        setCandidates(data);
+      } else if (role === 'MONITEUR') {
+        const data = await fetchWithRetry(`${import.meta.env.VITE_API_URL ?? ""}/api/moniteur/lessons`, { headers });
+        setMoniteurLessons(data);
+      } else if (role === 'CANDIDATE') {
+        const data = await fetchWithRetry(`${import.meta.env.VITE_API_URL ?? ""}/api/candidate/lessons`, { headers });
+        setCandidateData(data);
+      }
+    } catch (err) {
+      console.log('Error refreshing data', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -730,8 +708,8 @@ export default function Dashboard({ authData, onLogout }) {
         {activeTab === 'analytics' && loading && !analytics && (
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '400px', gap: '16px', color: 'var(--text-muted)' }}>
             <Loader2 size={48} className="animate-spin" style={{ color: 'var(--accent)' }} />
-            <h3 style={{ fontSize: '1.2rem', color: 'white' }}>Connexion au serveur & chargement des données...</h3>
-            <p style={{ fontSize: '0.85rem' }}>Si le serveur était en veille, le démarrage peut prendre quelques secondes.</p>
+            <h3 style={{ fontSize: '1.2rem', color: 'white', textAlign: 'center' }}>{loadingStatusText}</h3>
+            <p style={{ fontSize: '0.85rem' }}>Si le serveur était en veille sur Render, le démarrage automatique prend 10-15 secondes.</p>
           </div>
         )}
 

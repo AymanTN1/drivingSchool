@@ -3,10 +3,17 @@ import { AlertTriangle, CheckCircle, Clock, Wrench, Settings, Loader2 } from 'lu
 import API_BASE from '../api';
 
 export default function PredictiveMaintenanceView({ authData, vehicles = [] }) {
-  const [selectedVehicleId, setSelectedVehicleId] = useState(vehicles?.[0]?.id || '');
+  const [selectedVehicleId, setSelectedVehicleId] = useState('');
   const [predictions, setPredictions] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  // Auto-select first vehicle when vehicles arrive asynchronously
+  useEffect(() => {
+    if (vehicles.length > 0 && !selectedVehicleId) {
+      setSelectedVehicleId(vehicles[0].id);
+    }
+  }, [vehicles]);
 
   useEffect(() => {
     if (selectedVehicleId) {
@@ -17,17 +24,18 @@ export default function PredictiveMaintenanceView({ authData, vehicles = [] }) {
   const fetchPredictions = async (vehicleId) => {
     setLoading(true);
     setError('');
+    setPredictions(null);
     try {
       const response = await fetch(`${API_BASE}/api/fleet/maintenance/${vehicleId}/predict`, {
         headers: { 'Authorization': `Bearer ${authData.token}` }
       });
       if (!response.ok) {
-        throw new Error('Erreur lors de la récupération des prédictions IA');
+        throw new Error(`Erreur serveur (${response.status}). Le backend est peut-être en cours de redémarrage.`);
       }
       const data = await response.json();
       setPredictions(data);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || 'Erreur de connexion au serveur');
     } finally {
       setLoading(false);
     }

@@ -703,7 +703,6 @@ public class DashboardController {
     // --- ADMIN: Decision Analytics Dashboard ---
 
     @PreAuthorize("hasRole('ADMIN')")
-    @Cacheable("adminAnalytics")
     @GetMapping("/admin/analytics")
     public ResponseEntity<?> getAnalytics() {
         try {

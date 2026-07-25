@@ -95,7 +95,7 @@ export default function CandidateRiskView({ authData, candidates }) {
                           <User size={20} color="white" />
                         </div>
                         <div>
-                          <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white' }}>{candidate.user.firstName} {candidate.user.lastName}</h3>
+                          <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white' }}>{candidate.user?.fullName || candidate.user?.username || 'Candidat'}</h3>
                           <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>CIN: {candidate.cin}</span>
                         </div>
                       </div>
@@ -138,7 +138,7 @@ export default function CandidateRiskView({ authData, candidates }) {
                   const risk = risks[candidate.id];
                   return (
                     <tr key={candidate.id}>
-                      <td>{candidate.user.firstName} {candidate.user.lastName}</td>
+                      <td>{candidate.user?.fullName || candidate.user?.username || 'Candidat'}</td>
                       <td>{candidate.theoreticalTestScore}/40</td>
                       <td>{candidate.classesAttended} présences / {candidate.classesMissed} absences</td>
                       <td>{candidate.instructorEvaluationScore}/5</td>

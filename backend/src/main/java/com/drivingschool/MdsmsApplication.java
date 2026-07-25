@@ -35,6 +35,7 @@ public class MdsmsApplication {
             PaySlipRepository paySlipRepository,
             ProspectRepository prospectRepository,
             SupportLessonRepository supportLessonRepository,
+            MaintenanceRecordRepository maintenanceRecordRepository,
             PasswordEncoder passwordEncoder) {
 
         return args -> {
@@ -540,6 +541,72 @@ public class MdsmsApplication {
                     sl3.setComments("Première expérience autoroute, aller doucement.");
                     sl3.setCreatedAt(LocalDateTime.now().minusDays(1));
                     supportLessonRepository.save(sl3);
+                }
+            }
+
+            // 11. Create Maintenance Records if missing
+            if (maintenanceRecordRepository.count() == 0) {
+                List<Vehicle> vehicles = vehicleRepository.findAll();
+                if (!vehicles.isEmpty()) {
+                    Vehicle car1 = vehicles.get(0); // Peugeot 208 (12345-A-7) - 48500 km
+
+                    MaintenanceRecord mr1 = new MaintenanceRecord();
+                    mr1.setVehicle(car1);
+                    mr1.setType(MaintenanceType.OIL_CHANGE);
+                    mr1.setDate(LocalDate.now().minusMonths(4));
+                    mr1.setMileageAtMaintenance(39000);
+                    mr1.setCost(650.0);
+                    mr1.setDescription("Vidange 10W40 + Filtre à huile et filtre à air");
+                    maintenanceRecordRepository.save(mr1);
+
+                    MaintenanceRecord mr2 = new MaintenanceRecord();
+                    mr2.setVehicle(car1);
+                    mr2.setType(MaintenanceType.BRAKE_PADS);
+                    mr2.setDate(LocalDate.now().minusMonths(10));
+                    mr2.setMileageAtMaintenance(20000);
+                    mr2.setCost(1200.0);
+                    mr2.setDescription("Remplacement plaquettes de frein avant Bosch");
+                    maintenanceRecordRepository.save(mr2);
+
+                    MaintenanceRecord mr3 = new MaintenanceRecord();
+                    mr3.setVehicle(car1);
+                    mr3.setType(MaintenanceType.TIRE_REPLACEMENT);
+                    mr3.setDate(LocalDate.now().minusMonths(14));
+                    mr3.setMileageAtMaintenance(10000);
+                    mr3.setCost(3200.0);
+                    mr3.setDescription("Changement 4 pneus Michelin 195/55 R16");
+                    maintenanceRecordRepository.save(mr3);
+
+                    MaintenanceRecord mr4 = new MaintenanceRecord();
+                    mr4.setVehicle(car1);
+                    mr4.setType(MaintenanceType.WINDSHIELD_WIPERS);
+                    mr4.setDate(LocalDate.now().minusMonths(7));
+                    mr4.setMileageAtMaintenance(29000);
+                    mr4.setCost(250.0);
+                    mr4.setDescription("Remplacement balais essuie-glace Valeo");
+                    maintenanceRecordRepository.save(mr4);
+
+                    if (vehicles.size() > 1) {
+                        Vehicle car2 = vehicles.get(1); // Peugeot 208 (98765-B-11) - 65200 km
+
+                        MaintenanceRecord mr21 = new MaintenanceRecord();
+                        mr21.setVehicle(car2);
+                        mr21.setType(MaintenanceType.OIL_CHANGE);
+                        mr21.setDate(LocalDate.now().minusMonths(1));
+                        mr21.setMileageAtMaintenance(64000);
+                        mr21.setCost(680.0);
+                        mr21.setDescription("Vidange synthétique 5W30");
+                        maintenanceRecordRepository.save(mr21);
+
+                        MaintenanceRecord mr22 = new MaintenanceRecord();
+                        mr22.setVehicle(car2);
+                        mr22.setType(MaintenanceType.BRAKE_PADS);
+                        mr22.setDate(LocalDate.now().minusMonths(11));
+                        mr22.setMileageAtMaintenance(36000);
+                        mr22.setCost(1100.0);
+                        mr22.setDescription("Remplacement disques et plaquettes arrière");
+                        maintenanceRecordRepository.save(mr22);
+                    }
                 }
             }
         };

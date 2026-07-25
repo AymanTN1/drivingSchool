@@ -125,6 +125,38 @@ export default function Dashboard({ authData, onLogout }) {
     }
   };
 
+  const fetchDropdowns = () => {
+    const headers = { 'Authorization': `Bearer ${token}` };
+    fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/admin/users`, { headers })
+      .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
+      .then(data => {
+        const mons = data.filter(u => u.role === 'MONITEUR');
+        setMoniteurs(mons);
+      })
+      .catch(err => console.log('Error fetching moniteurs', err));
+
+    fetch(`${import.meta.env.VITE_API_URL ?? ""}/api/assistant/fleet`, { headers })
+      .then(res => { if(!res.ok) throw new Error("API Error"); return res.json(); })
+      .then(data => setVehicles(data))
+      .catch(err => console.log('Error fetching fleet', err));
+  };
+
+  // *** CRITICAL: Initial data load on component mount ***
+  useEffect(() => {
+    if (!token) {
+      onLogout();
+      return;
+    }
+    // Set initial tab based on role
+    if (role === 'ADMIN') setActiveTab('analytics');
+    else if (role === 'ASSISTANT') setActiveTab('candidates');
+    else if (role === 'MONITEUR') setActiveTab('moniteur-lessons');
+    else if (role === 'CANDIDATE') setActiveTab('candidate-progress');
+
+    fetchDropdowns();
+    refreshData();
+  }, [role, token]);
+
   // On-demand lazy loading when switching tabs
   useEffect(() => {
     if (!token || !activeTab) return;

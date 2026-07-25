@@ -171,7 +171,7 @@ public class MdsmsApplication {
                 candidateProfile1.setTheoreticalTestScore(28);
                 candidateProfile1.setClassesAttended(12);
                 candidateProfile1.setClassesMissed(4);
-                candidateProfile1.setInstructorEvaluationScore(2.5);
+                candidateProfile1.setInstructorEvaluationScore(2);
                 candidateProfileRepository.save(candidateProfile1);
 
                 User candidateUser2 = new User();
@@ -199,7 +199,7 @@ public class MdsmsApplication {
                 candidateProfile2.setTheoreticalTestScore(38);
                 candidateProfile2.setClassesAttended(20);
                 candidateProfile2.setClassesMissed(1);
-                candidateProfile2.setInstructorEvaluationScore(4.5);
+                candidateProfile2.setInstructorEvaluationScore(5);
                 candidateProfileRepository.save(candidateProfile2);
 
                 String[] mockNames = {
@@ -243,7 +243,7 @@ public class MdsmsApplication {
                     mockProf.setTheoreticalTestScore(25 + (i % 15));
                     mockProf.setClassesAttended(10 + (i % 10));
                     mockProf.setClassesMissed(i % 5);
-                    mockProf.setInstructorEvaluationScore(2.0 + (i % 3));
+                    mockProf.setInstructorEvaluationScore(2 + (i % 3));
                     if (i % 4 == 0) {
                         mockProf.setNarsaExamDate(LocalDate.now().plusDays((i * 2) + 5));
                     }

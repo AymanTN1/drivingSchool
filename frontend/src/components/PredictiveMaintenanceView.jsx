@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { AlertTriangle, CheckCircle, Clock, Wrench, Settings, Loader2 } from 'lucide-react';
 import API_BASE from '../api';
 
-export default function PredictiveMaintenanceView({ authData, vehicles }) {
-  const [selectedVehicleId, setSelectedVehicleId] = useState(vehicles[0]?.id || '');
+export default function PredictiveMaintenanceView({ authData, vehicles = [] }) {
+  const [selectedVehicleId, setSelectedVehicleId] = useState(vehicles?.[0]?.id || '');
   const [predictions, setPredictions] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -101,7 +101,7 @@ export default function PredictiveMaintenanceView({ authData, vehicles }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <div style={{ padding: '10px', background: 'rgba(255,255,255,0.05)', borderRadius: '12px' }}>
-                    <Tool size={20} color="white" />
+                    <Wrench size={20} color="white" />
                   </div>
                   <h3 style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'white' }}>{formatType(pred.type)}</h3>
                 </div>

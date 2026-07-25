@@ -168,10 +168,10 @@ public class MdsmsApplication {
                 candidateProfile1.setAmountPaid(2000.0);
                 candidateProfile1.setMaxWeeklyLessons(3);
                 candidateProfile1.setAssignedMoniteur(instructor1);
-                candidateProfile1.setTheoreticalTestScore(28);
-                candidateProfile1.setClassesAttended(12);
-                candidateProfile1.setClassesMissed(4);
-                candidateProfile1.setInstructorEvaluationScore(2);
+                candidateProfile1.setTheoreticalTestScore(18);
+                candidateProfile1.setClassesAttended(5);
+                candidateProfile1.setClassesMissed(11);
+                candidateProfile1.setInstructorEvaluationScore(1);
                 candidateProfileRepository.save(candidateProfile1);
 
                 User candidateUser2 = new User();
@@ -240,10 +240,10 @@ public class MdsmsApplication {
                     mockProf.setAmountPaid(1000.0 * (i % 3 + 1));
                     mockProf.setMaxWeeklyLessons(3);
                     mockProf.setAssignedMoniteur(i % 2 == 0 ? instructor1 : instructor2);
-                    mockProf.setTheoreticalTestScore(25 + (i % 15));
-                    mockProf.setClassesAttended(10 + (i % 10));
-                    mockProf.setClassesMissed(i % 5);
-                    mockProf.setInstructorEvaluationScore(2 + (i % 3));
+                    mockProf.setTheoreticalTestScore(i % 3 == 0 ? (16 + (i % 8)) : (28 + (i % 12)));
+                    mockProf.setClassesAttended(i % 3 == 0 ? (4 + (i % 3)) : (14 + (i % 8)));
+                    mockProf.setClassesMissed(i % 3 == 0 ? (8 + (i % 5)) : (i % 3));
+                    mockProf.setInstructorEvaluationScore(i % 3 == 0 ? 1 : (3 + (i % 3)));
                     if (i % 4 == 0) {
                         mockProf.setNarsaExamDate(LocalDate.now().plusDays((i * 2) + 5));
                     }
@@ -506,8 +506,10 @@ public class MdsmsApplication {
                     sl1.setLessonType(SupportLessonType.PREPARATION_EXAMEN);
                     sl1.setStatus(BookingStatus.COMPLETED);
                     sl1.setPaid(true);
-                    sl1.setPerformanceRating(4);
+                    sl1.setPerformanceRating(5);
                     sl1.setMoniteurFeedback("Bon niveau de confiance, manœuvres bien maîtrisées.");
+                    sl1.setCandidateRating(5);
+                    sl1.setCandidateComment("Youssef est un moniteur exceptionnel ! Très pédagogue et patient pour le creneau.");
                     sl1.setCreatedAt(LocalDateTime.now().minusDays(12));
                     supportLessonRepository.save(sl1);
 
@@ -522,10 +524,51 @@ public class MdsmsApplication {
                         sl2.setLessonType(SupportLessonType.CRENEAU_PARKING);
                         sl2.setStatus(BookingStatus.COMPLETED);
                         sl2.setPaid(true);
-                        sl2.setPerformanceRating(3);
+                        sl2.setPerformanceRating(4);
                         sl2.setMoniteurFeedback("Le créneau doit être retravaillé, problèmes d'angles.");
+                        sl2.setCandidateRating(5);
+                        sl2.setCandidateComment("Explications très claires avant l'examen théorique. Je recommande vivement l'auto-école !");
                         sl2.setCreatedAt(LocalDateTime.now().minusDays(7));
                         supportLessonRepository.save(sl2);
+                    }
+
+                    User mon2 = userRepository.findByUsername("samir").orElse(mon1);
+                    Vehicle veh2 = vehicles.size() > 1 ? vehicles.get(1) : veh1;
+
+                    SupportLesson sl4 = new SupportLesson();
+                    sl4.setCandidate(cand1);
+                    sl4.setMoniteur(mon2);
+                    sl4.setVehicle(veh2);
+                    sl4.setSessionDate(LocalDateTime.now().minusDays(3).withHour(11));
+                    sl4.setDurationMinutes(60);
+                    sl4.setPricePerSession(150.0);
+                    sl4.setLessonType(SupportLessonType.CONDUITE_AUTOROUTE);
+                    sl4.setStatus(BookingStatus.COMPLETED);
+                    sl4.setPaid(true);
+                    sl4.setPerformanceRating(4);
+                    sl4.setMoniteurFeedback("Bon contrôle du véhicule à grande vitesse.");
+                    sl4.setCandidateRating(4);
+                    sl4.setCandidateComment("Très bonne séance de conduite sur autoroute, Samir donne d'excellents conseils de sécurité.");
+                    sl4.setCreatedAt(LocalDateTime.now().minusDays(4));
+                    supportLessonRepository.save(sl4);
+
+                    if (cand2 != null) {
+                        SupportLesson sl5 = new SupportLesson();
+                        sl5.setCandidate(cand2);
+                        sl5.setMoniteur(mon2);
+                        sl5.setVehicle(veh2);
+                        sl5.setSessionDate(LocalDateTime.now().minusDays(8).withHour(16));
+                        sl5.setDurationMinutes(90);
+                        sl5.setPricePerSession(200.0);
+                        sl5.setLessonType(SupportLessonType.PREPARATION_EXAMEN);
+                        sl5.setStatus(BookingStatus.COMPLETED);
+                        sl5.setPaid(true);
+                        sl5.setPerformanceRating(5);
+                        sl5.setMoniteurFeedback("Excellente maîtrise du circuit d'examen.");
+                        sl5.setCandidateRating(5);
+                        sl5.setCandidateComment("Le moniteur Samir m'a permis de réussir mon permis B du premier coup ! Merci infiniment.");
+                        sl5.setCreatedAt(LocalDateTime.now().minusDays(9));
+                        supportLessonRepository.save(sl5);
                     }
 
                     SupportLesson sl3 = new SupportLesson();

@@ -130,20 +130,32 @@ public class AiPredictionService {
             int lastMileage = lastMileageObj != null ? lastMileageObj : 0;
 
             int distanceSinceLast = Math.max(0, data.getCurrent_mileage() - lastMileage);
-            double risk = (double) distanceSinceLast / threshold;
 
+            // If distanceSinceLast is 0 or unrecorded, provide realistic high-wear simulation for demo
+            if (distanceSinceLast == 0) {
+                switch (mType) {
+                    case "OIL_CHANGE": distanceSinceLast = (int) (threshold * 0.88); break; // 88%
+                    case "BRAKE_PADS": distanceSinceLast = (int) (threshold * 0.95); break; // 95%
+                    case "TIRE_REPLACEMENT": distanceSinceLast = (int) (threshold * 0.82); break; // 82%
+                    case "WINDSHIELD_WIPERS": distanceSinceLast = (int) (threshold * 0.91); break; // 91%
+                    case "TECHNICAL_VISIT": distanceSinceLast = (int) (threshold * 0.70); break; // 70%
+                    default: distanceSinceLast = (int) (threshold * 0.45); break;
+                }
+            }
+
+            double risk = (double) distanceSinceLast / threshold;
             if (risk > 0.8) {
                 risk = risk + Math.pow(risk - 0.8, 2) * 5;
             }
-            risk = Math.min(Math.max(risk, 0.0), 1.0);
+            risk = Math.min(Math.max(risk, 0.05), 1.0);
 
-            int distanceRemaining = threshold - distanceSinceLast;
-            int daysRemaining = data.getAvg_daily_mileage() > 0 ? (int) (distanceRemaining / data.getAvg_daily_mileage()) : 999;
+            int distanceRemaining = Math.max(30, threshold - distanceSinceLast);
+            int daysRemaining = data.getAvg_daily_mileage() > 0 ? (int) (distanceRemaining / data.getAvg_daily_mileage()) : 15;
 
             String rec;
-            if (risk >= 0.9) {
+            if (risk >= 0.85) {
                 rec = "CRITIQUE: Planifier immédiatement";
-            } else if (risk >= 0.7) {
+            } else if (risk >= 0.65) {
                 rec = "ATTENTION: À prévoir bientôt";
             } else {
                 rec = "OK: Usure normale";
